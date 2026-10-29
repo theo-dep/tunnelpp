@@ -11,7 +11,6 @@ const pkg = require("../package.json");
 const assets = {
   "linux-x64": "tunnelpp-client-linux-x64.tar.gz",
   "linux-arm64": "tunnelpp-client-linux-arm64.tar.gz",
-  "darwin-x64": "tunnelpp-client-darwin-x64.tar.gz",
   "darwin-arm64": "tunnelpp-client-darwin-arm64.tar.gz",
   "win32-x64": "tunnelpp-client-win32-x64.zip",
   "win32-arm64": "tunnelpp-client-win32-arm64.zip",
@@ -24,7 +23,7 @@ if (!asset) {
   process.exit(1);
 }
 
-const repo = process.env.TUNNELPP_REPO || "tunnelpp/tunnelpp";
+const repo = process.env.TUNNELPP_REPO || "theo-dep/tunnelpp";
 const url = `https://github.com/${repo}/releases/download/v${pkg.version}/${asset}`;
 const vendorDir = path.join(__dirname, "..", "vendor");
 const archivePath = path.join(vendorDir, asset);
@@ -89,7 +88,7 @@ async function main() {
 main().catch((error) => {
   console.error(`@theo-dep/tunnelpp: ${error.message}`);
   console.error(
-    "Download the binary manually from https://github.com/tunnelpp/tunnelpp/releases and place it in vendor/",
+    "Download the binary manually from https://github.com/theo-dep/tunnelpp/releases and place it in vendor/",
   );
   process.exit(1);
 });

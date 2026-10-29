@@ -3,7 +3,7 @@
   "name": "tunnelpp",
   "version-string": "0.1.0-alpha.1",
   "description": "tunnelpp exposes local HTTP services on public subdomains through a tunnel server",
-  "homepage": "https://github.com/tunnelpp/tunnelpp",
+  "homepage": "https://github.com/theo-dep/tunnelpp",
   "license": "MIT",
   "dependencies": [
     "argparse",

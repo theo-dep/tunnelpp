@@ -9,7 +9,7 @@ workflows, composite actions, Dependabot configuration.
 |---|---|---|---|
 | CI | `workflows/ci.yml` | push to `main`, PR | Multi-OS build + tests, clang-tidy lint |
 | Coverage | `workflows/coverage.yml` | push to `main`, manual | LLVM coverage report (artifact) |
-| Docker | `workflows/docker.yml` | push to `main` (path-filtered), published release | Build and push `ghcr.io/tunnelpp/server` image |
+| Docker | `workflows/docker.yml` | push to `main` (path-filtered), published release | Build and push `ghcr.io/theo-dep/tunnelpp` image |
 | Docs | `workflows/docs.yml` | push to `main` (path-filtered), manual | Build MkDocs and deploy GitHub Pages |
 | Release | `workflows/release.yml` | push to `main` | Semantic-release (conventional commits) + multi-platform binaries |
 
@@ -45,7 +45,7 @@ Two jobs:
 - QEMU + Buildx for multi-arch
 - Tags: semver (`v1.2.3` → `1.2.3`, `1.2`), short SHA
 - GHA cache (`cache-from`/`cache-to` type=gha, mode=max)
-- Pushes to `ghcr.io/tunnelpp/server`
+- Pushes to `ghcr.io/theo-dep/tunnelpp`
 
 ### Docs (`docs.yml`)
 
