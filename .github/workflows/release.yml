@@ -1,0 +1,160 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  # write access to GitHub Packages, used as the vcpkg binary cache (NuGet feed)
+  packages: write
+
+env:
+  VCPKG_ROOT: ${{ github.workspace }}/.vcpkg
+  VCPKG_EXE: ${{ github.workspace }}/.vcpkg/vcpkg
+  VCPKG_NUGET_FEED_URL: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
+  # VCPKG_BINARY_SOURCES is set by the setup-vcpkg action (GITHUB_ENV): NuGet cache
+  # where mono/nuget is available, disabled (clear) on runners where mono is not installable
+
+jobs:
+  semantic-release:
+    name: semantic-release
+    runs-on: ubuntu-latest
+    outputs:
+      released: ${{ steps.sr.outputs.released }}
+      version: ${{ steps.sr.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set git config
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install python-semantic-release
+        run: pip install python-semantic-release
+
+      - name: Semantic release
+        id: sr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          before=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
+          semantic-release version
+          after=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
+          if [ "$before" != "$after" ]; then
+            echo "released=true" >> "$GITHUB_OUTPUT"
+            echo "version=${after#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "released=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  publish-npm:
+    name: publish-npm
+    needs: semantic-release
+    if: needs.semantic-release.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.semantic-release.outputs.version }}
+
+      # setup-node writes .npmrc with //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://npm.pkg.github.com/"
+
+      # version in client/npm/package.json is synced by semantic-release's build_command.
+      # The ./ prefix is required: without it npm treats "client/npm" as a GitHub
+      # user/repo shorthand (git ls-remote ssh://git@github.com/client/npm.git, exit 128)
+      - name: Publish @theo-dep/tunnelpp to GitHub Packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm publish ./client/npm --access public
+
+  build:
+    name: build (${{ matrix.target }})
+    needs: semantic-release
+    if: needs.semantic-release.outputs.released == 'true'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux — Ubuntu 26.04 (last)
+          - { os: ubuntu-26.04, target: linux-x64 }
+          - { os: ubuntu-26.04-arm, target: linux-arm64 }
+          # Linux — Ubuntu 24.04 (OS-1)
+          - { os: ubuntu-24.04, target: linux-x64-ubuntu24 }
+          - { os: ubuntu-24.04-arm, target: linux-arm64-ubuntu24 }
+          # macOS — macOS 26 (last)
+          - { os: macos-latest, target: darwin-arm64 }
+          # macOS — macOS 15 (OS-1)
+          - { os: macos-15, target: darwin-arm64-macos15 }
+          # Windows — Server 2025 / Windows 11 (last)
+          - { os: windows-latest, target: win32-x64 }
+          - { os: windows-11-arm, target: win32-arm64 }
+          # Windows — Server 2022 (OS-1)
+          - { os: windows-2022, target: win32-x64-win2022 }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.semantic-release.outputs.version }}
+
+      - name: Install Ninja and Clang (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build clang zip
+
+      - name: Set up Clang (Windows)
+        if: runner.os == 'Windows'
+        run: echo "C:\Program Files\LLVM\bin" >> "$GITHUB_PATH"
+        shell: bash
+
+      # macOS: clang and ninja are preinstalled
+
+      - name: Set up vcpkg (NuGet binary cache)
+        uses: ./.github/actions/setup-vcpkg
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure
+        run: cmake --preset clang
+
+      - name: Build
+        run: cmake --build --preset clang-release
+
+      # zip is not available in Git Bash on Windows runners (exit 127): use Compress-Archive
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Compress-Archive -Path build/clang/client/Release/tunnelpp-client.exe -DestinationPath "dist/tunnelpp-client-$env:TARGET.zip"
+          Compress-Archive -Path build/clang/server/Release/tunnelpp-server.exe -DestinationPath "dist/tunnelpp-server-$env:TARGET.zip"
+
+      - name: Package (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          tar -czf "$GITHUB_WORKSPACE/dist/tunnelpp-client-$TARGET.tar.gz" -C build/clang/client/Release tunnelpp-client
+          tar -czf "$GITHUB_WORKSPACE/dist/tunnelpp-server-$TARGET.tar.gz" -C build/clang/server/Release tunnelpp-server
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          tag_name: v${{ needs.semantic-release.outputs.version }}

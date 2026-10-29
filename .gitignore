@@ -1,0 +1,8 @@
+build/
+vcpkg_installed/
+dist/
+node_modules/
+coverage/
+site/
+CMakeUserPresets.json
+*.log

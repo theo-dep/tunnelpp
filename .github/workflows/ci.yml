@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  # write access to GitHub Packages, used as the vcpkg binary cache (NuGet feed)
+  packages: write
+
+env:
+  VCPKG_ROOT: ${{ github.workspace }}/.vcpkg
+  VCPKG_EXE: ${{ github.workspace }}/.vcpkg/vcpkg
+  VCPKG_NUGET_FEED_URL: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
+
+jobs:
+  build-test:
+    name: build-test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Ninja and Clang (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build clang
+
+      - name: Set up Clang (Windows)
+        if: runner.os == 'Windows'
+        run: echo "C:\Program Files\LLVM\bin" >> "$GITHUB_PATH"
+        shell: bash
+
+      # macOS: clang and ninja are preinstalled
+
+      - name: Set up vcpkg (NuGet binary cache)
+        uses: ./.github/actions/setup-vcpkg
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure
+        run: cmake --preset clang-test
+
+      - name: Build
+        run: cmake --build --preset clang-test-debug
+
+      - name: Test
+        run: ctest --preset clang-test-debug --output-on-failure
+
+  lint:
+    name: lint (clang-tidy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Ninja, Clang and clang-tidy
+        run: sudo apt-get update && sudo apt-get install -y ninja-build clang clang-tidy
+
+      - name: Set up vcpkg (NuGet binary cache)
+        uses: ./.github/actions/setup-vcpkg
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure
+        run: cmake --preset clang-lint
+
+      - name: Build (runs clang-tidy on every file)
+        run: cmake --build build/clang-lint --config Debug --parallel 1

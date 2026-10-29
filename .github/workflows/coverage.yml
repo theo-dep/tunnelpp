@@ -1,0 +1,75 @@
+name: Coverage
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # write access to GitHub Packages, used as the vcpkg binary cache (NuGet feed)
+  packages: write
+
+env:
+  VCPKG_ROOT: ${{ github.workspace }}/.vcpkg
+  VCPKG_EXE: ${{ github.workspace }}/.vcpkg/vcpkg
+  VCPKG_NUGET_FEED_URL: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
+
+jobs:
+  coverage:
+    name: coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Ninja, Clang and LLVM
+        run: sudo apt-get update && sudo apt-get install -y ninja-build clang llvm
+
+      - name: Set up vcpkg (NuGet binary cache)
+        uses: ./.github/actions/setup-vcpkg
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure
+        run: cmake --preset clang-test -B build/coverage -DTUNNELPP_BUILD_COVERAGE=ON
+
+      - name: Build
+        run: cmake --build build/coverage --config Debug
+
+      - name: Test
+        run: |
+          cd build/coverage
+          LLVM_PROFILE_FILE="$PWD/coverage-%p.profraw" ctest -C Debug --output-on-failure
+
+      - name: Merge profiles
+        run: llvm-profdata merge -sparse $(find build/coverage -name '*.profraw') -o build/coverage.profdata
+
+      - name: Report
+        run: >-
+          llvm-cov report
+          build/coverage/common/tests/Debug/common_tests
+          -object build/coverage/server/tests/Debug/server_tests
+          -object build/coverage/client/tests/Debug/client_tests
+          -object build/coverage/tests/Debug/e2e_tests
+          --instr-profile=build/coverage.profdata
+          -ignore-filename-regex='vcpkg_installed|/usr/|build/|tests/'
+
+      - name: HTML report
+        run: >-
+          llvm-cov show
+          build/coverage/common/tests/Debug/common_tests
+          -object build/coverage/server/tests/Debug/server_tests
+          -object build/coverage/client/tests/Debug/client_tests
+          -object build/coverage/tests/Debug/e2e_tests
+          --instr-profile=build/coverage.profdata
+          --format=html
+          --output-dir=build/coverage-html
+          -ignore-filename-regex='vcpkg_installed|/usr/|build/|tests/'
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            build/coverage-html
+            build/coverage.profdata

@@ -1,0 +1,138 @@
+name: Set up vcpkg (NuGet binary cache on GitHub Packages)
+description: >-
+  Checks out vcpkg, bootstraps it and configures the binary cache backed by a
+  NuGet feed hosted on GitHub Packages, following the official vcpkg tutorial.
+  Expects VCPKG_EXE and VCPKG_NUGET_FEED_URL to be set (see the calling workflow).
+
+inputs:
+  github-token:
+    description: Token used to authenticate the NuGet feed (GITHUB_TOKEN)
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout vcpkg
+      uses: actions/checkout@v4
+      with:
+        repository: microsoft/vcpkg
+        path: .vcpkg
+        # Full history: the manifest's builtin-baseline pins an older commit than
+        # vcpkg HEAD; a shallow (depth 1) clone lacks it and vcpkg install fails
+        # with "failed to `git show` versions/baseline.json"
+        fetch-depth: 0
+
+    - name: Bootstrap vcpkg (Linux/macOS)
+      if: runner.os != 'Windows'
+      shell: bash
+      run: ./.vcpkg/bootstrap-vcpkg.sh
+
+    - name: Bootstrap vcpkg (Windows)
+      if: runner.os == 'Windows'
+      shell: cmd
+      run: .\.vcpkg\bootstrap-vcpkg.bat
+
+    # nuget.exe is executed through mono on Linux/macOS
+    # mono is no longer in the default Ubuntu repos on recent runners (apt exit 100),
+    # so the official Mono apt repository must be added first
+    - name: Add Mono official apt repository (Linux)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        set -euo pipefail
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends gnupg ca-certificates curl
+        # HTTPS keyserver + dearmor: hkp:// port 80 and the gnupg-ring: scheme are
+        # unreliable on GitHub runners (leads to NO_PUBKEY / apt exit 100)
+        curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF" \
+          | sudo gpg --dearmor -o /usr/share/keyrings/mono-official-archive-keyring.gpg
+        sudo chmod +r /usr/share/keyrings/mono-official-archive-keyring.gpg
+        echo "deb [signed-by=/usr/share/keyrings/mono-official-archive-keyring.gpg] https://download.mono-project.com/repo/ubuntu stable-focal main" | \
+          sudo tee /etc/apt/sources.list.d/mono-official-stable.list
+        sudo apt-get update
+
+    # ca-certificates-mono provides cert-sync and keeps the Mono CA store in sync with
+    # the system bundle. Without it, TLS to nuget.pkg.github.com fails with
+    # CERTIFICATE_VERIFY_FAILED and the vcpkg binary cache falls back to source builds.
+    # On recent Ubuntu runners (26.04+) the focal Mono packages have unmet dependencies
+    # (libssl1.1 & co): mono cannot be installed at all, so the NuGet binary cache is
+    # disabled via GITHUB_ENV and vcpkg builds dependencies from source instead.
+    - name: Install mono (Linux)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        if sudo apt-get install -y mono-complete ca-certificates-mono; then
+          echo "VCPKG_BINARY_SOURCES=clear;nuget,$VCPKG_NUGET_FEED_URL,readwrite" >> "$GITHUB_ENV"
+        else
+          echo "::warning::mono is not installable on this runner ($( . /etc/os-release && echo "$PRETTY_NAME")): the vcpkg NuGet binary cache is disabled for this job"
+          echo "VCPKG_BINARY_SOURCES=clear" >> "$GITHUB_ENV"
+          echo "TUNNELPP_MONO_UNAVAILABLE=1" >> "$GITHUB_ENV"
+        fi
+
+    - name: Sync CA certificates into Mono store (Linux)
+      if: runner.os == 'Linux' && env.TUNNELPP_MONO_UNAVAILABLE != '1'
+      shell: bash
+      run: |
+        if ! sudo cert-sync /etc/ssl/certs/ca-certificates.crt && ! sudo mozroots --import --sync; then
+          echo "::warning::cert-sync/mozroots failed: TLS to nuget.pkg.github.com may fail and the binary cache will fall back to source builds"
+        fi
+
+    - name: Install mono (macOS)
+      if: runner.os == 'macOS'
+      shell: bash
+      run: brew install mono
+
+    - name: Sync CA certificates into Mono store (macOS)
+      if: runner.os == 'macOS'
+      shell: bash
+      run: cert-sync /etc/ssl/cert.pem || mozroots --import --sync
+
+    - name: Enable NuGet binary cache (macOS)
+      if: runner.os == 'macOS'
+      shell: bash
+      run: echo "VCPKG_BINARY_SOURCES=clear;nuget,$VCPKG_NUGET_FEED_URL,readwrite" >> "$GITHUB_ENV"
+
+    - name: Add NuGet source (Linux/macOS)
+      if: runner.os == 'macOS' || (runner.os == 'Linux' && env.TUNNELPP_MONO_UNAVAILABLE != '1')
+      shell: bash
+      run: |
+        # Whole step is best-effort: a missing/unauthenticated NuGet source makes vcpkg
+        # fall back to source builds (non-fatal), so no failure here may fail the job.
+        # `vcpkg fetch nuget` itself can also fail on arm64 runners; the step must survive it.
+        set +e
+        nuget="$( $VCPKG_EXE fetch nuget | tail -n 1 )"
+        fetch_rc=$?
+        if [ "$fetch_rc" -ne 0 ] || [ -z "$nuget" ]; then
+          echo "::warning::vcpkg fetch nuget failed (rc=$fetch_rc): the binary cache is disabled and vcpkg will build from source"
+          echo "VCPKG_BINARY_SOURCES=clear" >> "$GITHUB_ENV"
+          exit 0
+        fi
+        if mono "$nuget" sources add \
+              -Source "$VCPKG_NUGET_FEED_URL" \
+              -StorePasswordInClearText \
+              -Name GitHubPackages \
+              -UserName "${{ github.repository_owner }}" \
+              -Password "${{ inputs.github-token }}" ; then
+          mono "$nuget" setapikey "${{ inputs.github-token }}" -Source "$VCPKG_NUGET_FEED_URL" || true
+        else
+          echo "::warning::failed to add the NuGet source: the binary cache is disabled and vcpkg will build from source"
+          echo "VCPKG_BINARY_SOURCES=clear" >> "$GITHUB_ENV"
+        fi
+
+    - name: Add NuGet source (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $nuget = & $env:VCPKG_EXE fetch nuget
+        & $nuget sources add `
+          -Source "$env:VCPKG_NUGET_FEED_URL" `
+          -StorePasswordInClearText `
+          -Name GitHubPackages `
+          -UserName "${{ github.repository_owner }}" `
+          -Password "${{ inputs.github-token }}"
+        & $nuget setapikey "${{ inputs.github-token }}" -Source "$env:VCPKG_NUGET_FEED_URL"
+
+    - name: Enable NuGet binary cache (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: 'Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_BINARY_SOURCES=clear;nuget,$env:VCPKG_NUGET_FEED_URL,readwrite"'
