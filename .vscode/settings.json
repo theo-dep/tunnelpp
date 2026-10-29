@@ -1,0 +1,11 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+  "files.associations": {
+    "Justfile": "makefile",
+    ".github/AGENTS.md": "markdown"
+  },
+  "C_Cpp.intelliSenseEngine": "disabled",
+  "C_Cpp.default.compileCommands": ["${workspaceFolder}/build/clang/compile_commands.json"],
+  "clangd.arguments": ["--compile-commands-dir=${workspaceFolder}/build/clang", "--background-index", "--clang-tidy"]
+}

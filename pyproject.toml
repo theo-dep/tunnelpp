@@ -1,0 +1,26 @@
+[project]
+name = "tunnelpp"
+version = "0.1.0"
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+build_command = "sed -i 's/VERSION [^ ]*/VERSION {version}/' CMakeLists.txt && sed -i 's/\"version-string\": \"[^\"]*\"/\"version-string\": \"{version}\"/' vcpkg.json && sed -i 's/\"version\": \"[^\"]*\"/\"version\": \"{version}\"/' client/npm/package.json"
+changelog_file = "CHANGELOG.md"
+commit_message = "chore(release): {version} [skip ci]"
+tag_format = "v{version}"
+allow_zero_version = true
+major_on_zero = false
+
+[tool.semantic_release.branches.main]
+match = "main"
+
+[tool.semantic_release.changelog]
+exclude_commit_patterns = ["^chore\\(release\\):"]
+
+[tool.semantic_release.commit_parser_options]
+allowed_tags = ["build", "chore", "ci", "docs", "feat", "fix", "perf", "refactor", "revert", "style", "test"]
+minor_tags = ["feat"]
+patch_tags = ["fix", "perf"]
+
+[tool.semantic_release.remote]
+type = "github"

@@ -1,0 +1,15 @@
+services:
+  tunnelpp-server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    environment:
+      TUNNELPP_DOMAIN: ${TUNNELPP_DOMAIN:-tunnel.example.com}
+      TUNNELPP_TOKEN: ${TUNNELPP_TOKEN:?set TUNNELPP_TOKEN in the environment or in .env}
+      TUNNELPP_HOST: 0.0.0.0
+      TUNNELPP_HTTP_PORT: 8080
+      TUNNELPP_ADMIN_PORT: 8081
+    ports:
+      - "8080:8080"
+      # the admin API should not be exposed publicly
+      - "127.0.0.1:8081:8081"

@@ -1,0 +1,37 @@
+{
+    "name": "@tunnelpp/client",
+    "version": "0.1.0",
+    "description": "tunnelpp client: expose a local HTTP service on a public subdomain through a tunnelpp server",
+    "license": "MIT",
+    "homepage": "https://github.com/tunnelpp/tunnelpp",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/tunnelpp/tunnelpp.git",
+        "directory": "client/npm"
+    },
+    "bin": {
+        "tunnelpp-client": "bin/tunnelpp-client.js"
+    },
+    "main": "index.js",
+    "scripts": {
+        "install": "node scripts/install.js"
+    },
+    "files": [
+        "bin",
+        "scripts",
+        "index.js",
+        "vendor"
+    ],
+    "engines": {
+        "node": ">=16"
+    },
+    "os": [
+        "linux",
+        "darwin",
+        "win32"
+    ],
+    "cpu": [
+        "x64",
+        "arm64"
+    ]
+}

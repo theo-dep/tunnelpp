@@ -1,0 +1,67 @@
+name: Set up vcpkg (NuGet binary cache on GitHub Packages)
+description: >-
+  Checks out vcpkg, bootstraps it and configures the binary cache backed by a
+  NuGet feed hosted on GitHub Packages, following the official vcpkg tutorial.
+  Expects VCPKG_EXE and VCPKG_NUGET_FEED_URL to be set (see the calling workflow).
+
+inputs:
+  github-token:
+    description: Token used to authenticate the NuGet feed (GITHUB_TOKEN)
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout vcpkg
+      uses: actions/checkout@v4
+      with:
+        repository: microsoft/vcpkg
+        path: .vcpkg
+        fetch-depth: 1
+
+    - name: Bootstrap vcpkg (Linux/macOS)
+      if: runner.os != 'Windows'
+      shell: bash
+      run: ./.vcpkg/bootstrap-vcpkg.sh
+
+    - name: Bootstrap vcpkg (Windows)
+      if: runner.os == 'Windows'
+      shell: cmd
+      run: .\.vcpkg\bootstrap-vcpkg.bat
+
+    # nuget.exe is executed through mono on Linux/macOS
+    - name: Install mono (Linux)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: sudo apt-get update && sudo apt-get install -y mono-complete
+
+    - name: Install mono (macOS)
+      if: runner.os == 'macOS'
+      shell: bash
+      run: brew install mono
+
+    - name: Add NuGet source (Linux/macOS)
+      if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        nuget="$( $VCPKG_EXE fetch nuget | tail -n 1 )"
+        mono "$nuget" sources add \
+          -Source "$VCPKG_NUGET_FEED_URL" \
+          -StorePasswordInClearText \
+          -Name GitHubPackages \
+          -UserName "${{ github.repository_owner }}" \
+          -Password "${{ inputs.github-token }}"
+        mono "$nuget" setapikey "${{ inputs.github-token }}" -Source "$VCPKG_NUGET_FEED_URL"
+
+    - name: Add NuGet source (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $nuget = & $env:VCPKG_EXE fetch nuget
+        & $nuget sources add `
+          -Source "$env:VCPKG_NUGET_FEED_URL" `
+          -StorePasswordInClearText `
+          -Name GitHubPackages `
+          -UserName "${{ github.repository_owner }}" `
+          -Password "${{ inputs.github-token }}"
+        & $nuget setapikey "${{ inputs.github-token }}" -Source "$env:VCPKG_NUGET_FEED_URL"

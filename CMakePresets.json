@@ -1,0 +1,84 @@
+{
+    "version": 6,
+    "configurePresets": [
+        {
+            "name": "clang",
+            "displayName": "Clang + vcpkg (multi-config)",
+            "generator": "Ninja Multi-Config",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+            }
+        },
+        {
+            "name": "clang-test",
+            "displayName": "Clang + vcpkg, tests in Debug with sanitizers",
+            "inherits": "clang",
+            "cacheVariables": {
+                "TUNNELPP_BUILD_TESTS": "ON",
+                "TUNNELPP_ENABLE_SANITIZERS": "ON"
+            }
+        },
+        {
+            "name": "clang-lint",
+            "displayName": "Clang + vcpkg with clang-tidy",
+            "inherits": "clang",
+            "cacheVariables": {
+                "CMAKE_CXX_CLANG_TIDY": "clang-tidy"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "clang-debug",
+            "configurePreset": "clang",
+            "configuration": "Debug"
+        },
+        {
+            "name": "clang-release",
+            "configurePreset": "clang",
+            "configuration": "Release"
+        },
+        {
+            "name": "clang-test-debug",
+            "configurePreset": "clang-test",
+            "configuration": "Debug"
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "clang-test-debug",
+            "configurePreset": "clang-test",
+            "configuration": "Debug",
+            "output": {
+                "outputOnFailure": true
+            },
+            "execution": {
+                "noTestsAction": "error"
+            }
+        }
+    ],
+    "workflowPresets": [
+        {
+            "name": "clang-test-debug",
+            "displayName": "Configure, build and test (Debug + sanitizers)",
+            "steps": [
+                {
+                    "type": "configure",
+                    "name": "clang-test"
+                },
+                {
+                    "type": "build",
+                    "name": "clang-test-debug"
+                },
+                {
+                    "type": "test",
+                    "name": "clang-test-debug"
+                }
+            ]
+        }
+    ]
+}

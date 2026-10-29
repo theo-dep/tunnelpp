@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "tunnelpp",
+  "version-string": "0.1.0",
+  "description": "tunnelpp exposes local HTTP services on public subdomains through a tunnel server",
+  "homepage": "https://github.com/tunnelpp/tunnelpp",
+  "license": "MIT",
+  "dependencies": [
+    "argparse",
+    "catch2",
+    {
+      "name": "cpp-httplib",
+      "default-features": false,
+      "features": ["openssl"]
+    },
+    "nlohmann-json",
+    "openssl",
+    "spdlog"
+  ],
+  "builtin-baseline": "15b12b99a227d51e21c86dffd40385439eac87a0"
+}
