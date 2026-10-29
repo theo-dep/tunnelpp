@@ -70,3 +70,25 @@ jobs:
 
       - name: Build (runs clang-tidy on every file)
         run: cmake --build build/clang-lint --config Debug --parallel 1
+
+  semi-linear:
+    # Emulates GitLab "merge commit with semi-linear history": the PR branch must be rebased
+    # on main (no merge commits in it); the merge into main stays a merge commit.
+    name: semi-linear
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      # Pull the real branch head, not the PR merge ref (which is itself a merge commit)
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Forbid merge commits in the PR branch
+        run: |
+          merges=$(git rev-list --merges origin/main..HEAD)
+          if [ -n "$merges" ]; then
+            echo "::error::Merge commits in the branch; rebase on main:"
+            git log --oneline --no-patch $merges
+            exit 1
+          fi
