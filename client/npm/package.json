@@ -1,6 +1,6 @@
 {
     "name": "@theo-dep/tunnelpp",
-    "version": "0.0.0",
+    "version": "0.1.0-alpha.1",
     "description": "tunnelpp client: expose a local HTTP service on a public subdomain through a tunnelpp server",
     "license": "MIT",
     "homepage": "https://github.com/tunnelpp/tunnelpp",
