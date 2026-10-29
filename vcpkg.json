@@ -11,11 +11,13 @@
     {
       "name": "cpp-httplib",
       "default-features": false,
-      "features": ["openssl"]
+      "features": [
+        "openssl"
+      ]
     },
     "nlohmann-json",
     "openssl",
     "spdlog"
   ],
-  "builtin-baseline": "15b12b99a227d51e21c86dffd40385439eac87a0"
+  "builtin-baseline": "9eec002df1cd109f8f104cd966a763daf9751489"
 }
