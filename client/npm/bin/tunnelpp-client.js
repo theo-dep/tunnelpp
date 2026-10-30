@@ -13,7 +13,7 @@ const binary = path.join(
 );
 if (!fs.existsSync(binary)) {
   console.error(
-    "@theo-dep/tunnelpp: binary not found. Run `npm install` again, or download it manually from https://github.com/tunnelpp/tunnelpp/releases",
+    "@theo-dep/tunnelpp: binary not found. Run `npm install` again, or download it manually from https://github.com/theo-dep/tunnelpp/releases",
   );
   process.exit(1);
 }

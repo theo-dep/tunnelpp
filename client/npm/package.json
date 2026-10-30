@@ -3,10 +3,10 @@
     "version": "0.1.0-alpha.1",
     "description": "tunnelpp client: expose a local HTTP service on a public subdomain through a tunnelpp server",
     "license": "MIT",
-    "homepage": "https://github.com/tunnelpp/tunnelpp",
+    "homepage": "https://github.com/theo-dep/tunnelpp",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/tunnelpp/tunnelpp.git",
+        "url": "git+https://github.com/theo-dep/tunnelpp.git",
         "directory": "client/npm"
     },
     "bin": {

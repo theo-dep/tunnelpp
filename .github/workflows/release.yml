@@ -43,8 +43,10 @@ jobs:
 
       - name: Semantic release
         id: sr
+        # RELEASE_PAT: fine-grained PAT (Contents read/write, this repo only). Its owner is a
+        # bypass actor of the `main` ruleset, so the release commit can bypass the PR rule.
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
         run: |
           before=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
           semantic-release version

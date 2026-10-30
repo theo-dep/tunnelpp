@@ -26,7 +26,7 @@ The server refuses to start when `TUNNELPP_TOKEN` is missing or when a port is i
 docker run -p 8080:8080 -p 127.0.0.1:8081:8081 \
     -e TUNNELPP_DOMAIN=tunnel.example.com \
     -e TUNNELPP_TOKEN=change-me \
-    ghcr.io/tunnelpp/server:latest
+    ghcr.io/theo-dep/tunnelpp:latest
 ```
 
 Or with the provided compose file:

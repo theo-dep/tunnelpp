@@ -26,8 +26,8 @@ const child = startTunnel({
 });
 ```
 
-See the [client documentation](https://tunnelpp.github.io/tunnelpp/client/) for all options.
+See the [client documentation](https://theo-dep.github.io/tunnelpp/client/) for all options.
 
 ## Supported platforms
 
-linux (x64, arm64), macOS (x64, arm64), Windows (x64).
+linux (x64, arm64), macOS (arm64), Windows (x64, arm64).
