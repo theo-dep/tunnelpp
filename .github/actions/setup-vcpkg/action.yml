@@ -12,15 +12,15 @@ inputs:
 runs:
   using: composite
   steps:
+    # Check out vcpkg at exactly the commit pinned by "builtin-baseline" in vcpkg.json
     - name: Checkout vcpkg
-      uses: actions/checkout@v4
-      with:
-        repository: microsoft/vcpkg
-        path: .vcpkg
-        # Full history: the manifest's builtin-baseline pins an older commit than
-        # vcpkg HEAD; a shallow (depth 1) clone lacks it and vcpkg install fails
-        # with "failed to `git show` versions/baseline.json"
-        fetch-depth: 0
+      shell: bash
+      run: |
+        baseline="$(sed -n 's/.*"builtin-baseline": *"\([0-9a-f]\{40\}\)".*/\1/p' "$GITHUB_WORKSPACE/vcpkg.json")"
+        git init .vcpkg
+        git -C .vcpkg remote add origin https://github.com/microsoft/vcpkg.git
+        git -C .vcpkg fetch --depth 1 origin "$baseline"
+        git -C .vcpkg checkout --detach FETCH_HEAD
 
     - name: Bootstrap vcpkg (Linux/macOS)
       if: runner.os != 'Windows'

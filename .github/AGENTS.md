@@ -103,7 +103,7 @@ vcpkg uses `fix(deps)` because C++ dependency updates often include security fix
 
 `.github/actions/setup-vcpkg/action.yml` — used by `ci.yml`, `coverage.yml` and `release.yml`.
 
-- Checks out `microsoft/vcpkg` into `.vcpkg/`
+- Checks out `microsoft/vcpkg` into `.vcpkg/`, pinned to the `builtin-baseline` commit of `vcpkg.json` (depth-1 fetch)
 - Bootstraps vcpkg (`.sh` on Linux/macOS, `.bat` on Windows)
 - Installs `mono` on Linux/macOS (needed to run `nuget.exe`)
 - Configures the vcpkg binary cache on a NuGet feed hosted on GitHub Packages
