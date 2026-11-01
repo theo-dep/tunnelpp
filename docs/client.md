@@ -11,7 +11,7 @@ tunnelpp-client --server <ws:// or wss:// URL> --token <token> [options]
 
 | Option | Default | Description |
 | ------ | ------- | ----------- |
-| `--server` | **required** | tunnel server WebSocket URL, e.g. `wss://tunnel.example.com/tunnel` |
+| `--server` | **required** | tunnel server WebSocket URL, e.g. `wss://tunnel.example.com` |
 | `--token` | **required** | authentication token shared with the server |
 | `--local` | `http://127.0.0.1:8080` | local service URL to expose (`http://` or `https://`) |
 | `--subdomain` | random | requested subdomain (`<subdomain>.<domain>`) |
@@ -22,7 +22,7 @@ Example:
 
 ```sh
 tunnelpp-client \
-    --server wss://tunnel.example.com/tunnel \
+    --server wss://tunnel.example.com \
     --token change-me \
     --local http://127.0.0.1:3000 \
     --subdomain my-app
@@ -37,7 +37,7 @@ The client reconnects automatically with an exponential backoff (1s, doubling up
 
 ```sh
 npm install -g @theo-dep/tunnelpp
-tunnelpp-client --server wss://tunnel.example.com/tunnel --token change-me --local http://127.0.0.1:3000
+tunnelpp-client --server wss://tunnel.example.com --token change-me --local http://127.0.0.1:3000
 ```
 
 At install time, the package downloads the prebuilt binary for the current platform from the GitHub
@@ -51,7 +51,7 @@ environment variable (`<owner>/<repo>`).
 const { startTunnel } = require('@theo-dep/tunnelpp');
 
 const child = startTunnel({
-    server: 'wss://tunnel.example.com/tunnel',
+    server: 'wss://tunnel.example.com',
     token: 'change-me',
     local: 'http://127.0.0.1:3000',
     // subdomain: 'my-app',          // optional, random when omitted

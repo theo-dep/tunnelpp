@@ -49,7 +49,7 @@ namespace tunnelpp::server
         _public_server->set_websocket_ping_interval(ping_interval_seconds);
         _public_server->set_websocket_max_missed_pongs(3);
         // clang-tidy 21: false-positive NewDeleteLeaks reported inside httplib.h from this call
-        _public_server->WebSocket("/tunnel", [this](const httplib::Request&, httplib::ws::WebSocket& ws) { // NOLINT(clang-analyzer-cplusplus.NewDeleteLeaks)
+        _public_server->WebSocket("/", [this](const httplib::Request&, httplib::ws::WebSocket& ws) { // NOLINT(clang-analyzer-cplusplus.NewDeleteLeaks)
             handle_ws(ws);
         });
         const auto catch_all{ [this](const httplib::Request& req, httplib::Response& res) {

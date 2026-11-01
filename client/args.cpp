@@ -2,8 +2,10 @@
 
 #include <argparse/argparse.hpp>
 #include <subdomain.h>
+#include <url.h>
 
 #include <iostream>
+#include <string>
 
 namespace tunnelpp::client
 {
@@ -12,7 +14,7 @@ namespace tunnelpp::client
         constexpr int default_max_reconnect_delay{ 30 };
         argparse::ArgumentParser parser{ "tunnelpp-client", TUNNELPP_VERSION };
         parser.add_argument("--server")
-            .help("tunnel server WebSocket URL (ws:// or wss://), e.g. ws://tunnel.example.com/tunnel")
+            .help("tunnel server WebSocket URL (ws:// or wss://), e.g. ws://tunnel.example.com")
             .required();
         parser.add_argument("--token").help("authentication token shared with the server").required();
         parser.add_argument("--local")
@@ -48,6 +50,17 @@ namespace tunnelpp::client
             std::cerr << "error: --server must be a ws:// or wss:// URL\n";
             return std::nullopt;
         }
+        // rebuild the URL with an explicit path: the WebSocket client rejects an empty one
+        options.server_url = server->scheme + "://";
+        if (server->host.contains(':')) {
+            options.server_url += "[" + server->host + "]";
+        } else {
+            options.server_url += server->host;
+        }
+        if (server->port != 0) {
+            options.server_url += ":" + std::to_string(server->port);
+        }
+        options.server_url += server->path;
         const auto local{ parse_url(parser.get<std::string>("--local")) };
         if (!local || (local->scheme != "http" && local->scheme != "https")) {
             std::cerr << "error: --local must be an http:// or https:// URL\n";

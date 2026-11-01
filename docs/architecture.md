@@ -7,7 +7,7 @@
                         │         tunnelpp-server       │
                         │  ┌─────────────────────────┐ │
         public HTTP ───▶│  │ public listener + WS     │ │
-        (via reverse     │  │ :8080  /tunnel           │ │
+        (via reverse     │  │ :8080  /                        │ │
          proxy, TLS)     │  └────┬────────────────────┘ │
                         │  router + sessions + pending │
                         └───────┼──────────────────────┘

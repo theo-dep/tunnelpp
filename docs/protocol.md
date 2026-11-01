@@ -1,11 +1,11 @@
 # Protocol
 
-Tunnels are WebSocket connections (RFC 6455) between the client and the server, on the path `/tunnel` of the
+Tunnels are WebSocket connections (RFC 6455) between the client and the server, on the root path `/` of the
 public listener:
 
 ```
-ws://tunnel.example.com/tunnel        (plain, e.g. local development)
-wss://tunnel.example.com/tunnel       (TLS terminated by the reverse proxy)
+ws://tunnel.example.com              (plain, e.g. local development)
+wss://tunnel.example.com             (TLS terminated by the reverse proxy)
 ```
 
 All application messages are JSON text frames. Request and response bodies are base64-encoded in the
@@ -115,7 +115,7 @@ library.
 sequenceDiagram
     participant C as client
     participant S as server
-    C->>S: WebSocket upgrade /tunnel
+    C->>S: WebSocket upgrade /
     C->>S: register {version, subdomain, token}
     alt token invalid
         S-->>C: error {code: "invalid_token"}

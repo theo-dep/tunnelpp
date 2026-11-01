@@ -3,7 +3,7 @@
 ## v1 (current)
 
 - WebSocket tunnel protocol v1 (JSON messages, base64 bodies, `request`/`response` correlation by `id`)
-- Server: public listener, WebSocket gateway `/tunnel`, subdomain routing, token auth, Docker image
+- Server: public listener, WebSocket gateway `/`, subdomain routing, token auth, Docker image
 - Client: CLI (argparse), automatic subdomain, reconnection with exponential backoff, local HTTP/HTTPS
   forwarding, npm package with prebuilt binaries
 - Tests: Catch2 unit tests + end-to-end suite, Debug + ASan/UBSan, clang coverage

@@ -36,7 +36,7 @@ Expose a local service:
 
 ```sh
 npm install -g @theo-dep/tunnelpp
-tunnelpp-client --server ws://tunnel.example.com/tunnel --token change-me --local http://127.0.0.1:3000
+tunnelpp-client --server ws://tunnel.example.com --token change-me --local http://127.0.0.1:3000
 # tunnel ready: https://my-app.tunnel.example.com -> http://127.0.0.1:3000
 ```
 

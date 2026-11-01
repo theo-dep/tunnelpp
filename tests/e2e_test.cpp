@@ -73,7 +73,7 @@ namespace
     ClientConfig make_client_config(int server_port, int local_port, const std::string& token, const std::string& subdomain)
     {
         ClientConfig config;
-        config.server_url = "ws://127.0.0.1:" + std::to_string(server_port) + "/tunnel";
+        config.server_url = "ws://127.0.0.1:" + std::to_string(server_port) + "/";
         config.token = token;
         config.local.scheme = "http";
         config.local.host = "127.0.0.1";
@@ -129,6 +129,30 @@ TEST_CASE("e2e http request through the tunnel")
     const auto wrong_host{ http.Get("/", httplib::Headers{ { "Host", "example.com" } }) };
     REQUIRE(wrong_host);
     REQUIRE(wrong_host->status == 404);
+
+    client.stop();
+    client_thread.join();
+    server.stop();
+}
+
+TEST_CASE("e2e websocket gateway on the root path")
+{
+    EchoServer echo;
+    auto server{ make_server() };
+    REQUIRE(server.start());
+
+    TunnelClient client{ make_client_config(server.public_port(), echo.port(), "secret", "e2e-app") };
+    std::thread client_thread{ [&] { client.run(); } };
+    REQUIRE(wait_for([&] { return client.is_registered(); }, 5));
+
+    // a plain GET / on the apex domain still answers the server info, not the gateway
+    httplib::Client http{ "127.0.0.1", server.public_port() };
+    http.set_read_timeout(10, 0);
+    const auto info{ http.Get("/", httplib::Headers{ { "Host", "tunnel.test" } }) };
+    REQUIRE(info);
+    REQUIRE(info->status == 200);
+    const auto body = nlohmann::json::parse(info->body);
+    REQUIRE(body.at("name") == "tunnelpp");
 
     client.stop();
     client_thread.join();

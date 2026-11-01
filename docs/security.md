@@ -2,7 +2,7 @@
 
 ## Threat model
 
-- The **server** is public: anyone can send HTTP requests to it and open WebSocket connections to `/tunnel`.
+- The **server** is public: anyone can send HTTP requests to it and open WebSocket connections to `/`.
 - The **client** runs next to a local service that is usually not meant to be public.
 - The **token** (`TUNNELPP_TOKEN`) is the only credential: it authorizes registering a tunnel. Anyone who has
   it can expose their own local service on the server's domain.

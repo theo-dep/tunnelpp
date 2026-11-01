@@ -18,7 +18,7 @@ This file inherits the root `AGENTS.md` rules (see Hierarchy there).
 
 ## Layout
 
-- `tunnel_server.*`: `TunnelServer`: public listener (HTTP + WebSocket gateway `/tunnel`), request routing.
+- `tunnel_server.*`: `TunnelServer`: public listener (HTTP + WebSocket gateway `/`), request routing.
   Owns the `httplib::Server` instance behind `unique_ptr` (forward declared).
 - `session.*`: `Session` (one connected tunnel) and `SessionManager` (subdomain registry).
 - `pending.*`: `PendingRequestTable`: public requests waiting for the client response over WebSocket.
