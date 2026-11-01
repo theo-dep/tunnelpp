@@ -12,8 +12,6 @@ namespace tunnelpp
         std::string token;
         std::string host{ "0.0.0.0" };
         int http_port{ 8080 };
-        int admin_port{ 8081 };
-        std::string admin_token;
         std::string public_scheme{ "http" };
         int request_timeout_seconds{ 30 };
     };

@@ -15,7 +15,6 @@
 namespace tunnelpp::server
 {
     static constexpr int status_ok{ 200 };
-    static constexpr int status_unauthorized{ 401 };
     static constexpr int status_not_found{ 404 };
     static constexpr int status_bad_gateway{ 502 };
     static constexpr int status_gateway_timeout{ 504 };
@@ -46,7 +45,6 @@ namespace tunnelpp::server
     TunnelServer::TunnelServer(ServerConfig config)
         : _config{ std::move(config) }
         , _public_server{ std::make_unique<httplib::Server>() }
-        , _admin_server{ std::make_unique<httplib::Server>() }
     {
         _public_server->set_websocket_ping_interval(ping_interval_seconds);
         _public_server->set_websocket_max_missed_pongs(3);
@@ -63,55 +61,6 @@ namespace tunnelpp::server
         _public_server->Patch(R"((.*))", catch_all);
         _public_server->Delete(R"((.*))", catch_all);
         _public_server->Options(R"((.*))", catch_all);
-
-        if (!_config.admin_token.empty()) {
-            _admin_server->set_pre_routing_handler([this](const httplib::Request& req, httplib::Response& res) {
-                if (req.get_header_value("Authorization") != "Bearer " + _config.admin_token) {
-                    set_json(res, status_unauthorized, R"({"error":"unauthorized"})");
-                    return httplib::Server::HandlerResponse::Handled;
-                }
-                return httplib::Server::HandlerResponse::Unhandled;
-            });
-        }
-        _admin_server->Get("/healthz", [](const httplib::Request&, httplib::Response& res) {
-            set_json(res, status_ok, R"({"status":"ok"})");
-        });
-        _admin_server->Get("/api/v1/stats", [this](const httplib::Request&, httplib::Response& res) {
-            const auto uptime{ std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - _started_at).count() };
-            const auto body = nlohmann::json{
-                { "active_sessions", _sessions.size() },
-                { "total_sessions", _stats.total_sessions.load() },
-                { "total_requests", _stats.total_requests.load() },
-                { "bytes_in", _stats.bytes_in.load() },
-                { "bytes_out", _stats.bytes_out.load() },
-                { "rejected_registers", _stats.rejected_registers.load() },
-                { "uptime_seconds", uptime },
-            };
-            set_json(res, status_ok, body.dump());
-        });
-        _admin_server->Get("/api/v1/sessions", [this](const httplib::Request&, httplib::Response& res) {
-            auto sessions = nlohmann::json::array();
-            for (const auto& session : _sessions.snapshot()) {
-                sessions.push_back({
-                    { "subdomain", session->subdomain() },
-                    { "url", session->url() },
-                    { "connected_at", std::chrono::system_clock::to_time_t(session->connected_at()) },
-                    { "requests", session->requests().load() },
-                    { "bytes_in", session->bytes_in().load() },
-                    { "bytes_out", session->bytes_out().load() },
-                });
-            }
-            set_json(res, status_ok, nlohmann::json{ { "sessions", sessions } }.dump());
-        });
-        _admin_server->Delete(R"(/api/v1/sessions/([a-z0-9-]+))", [this](const httplib::Request& req, httplib::Response& res) {
-            const auto session{ _sessions.find(req.matches.str(1)) };
-            if (!session) {
-                set_json(res, status_not_found, R"({"error":"session_not_found"})");
-                return;
-            }
-            session->close();
-            set_json(res, status_ok, R"({"closed":true})");
-        });
     }
 
     TunnelServer::~TunnelServer()
@@ -125,14 +74,8 @@ namespace tunnelpp::server
             spdlog::error("failed to bind public listener on {}:{}", _config.host, _config.http_port);
             return false;
         }
-        if (!bind_listener(*_admin_server, _config.host, _config.admin_port, _admin_port)) {
-            spdlog::error("failed to bind admin listener on {}:{}", _config.host, _config.admin_port);
-            return false;
-        }
-        _started_at = std::chrono::steady_clock::now();
         _running = true;
         _public_thread = std::thread([this] { _public_server->listen_after_bind(); });
-        _admin_thread = std::thread([this] { _admin_server->listen_after_bind(); });
         return true;
     }
 
@@ -145,12 +88,8 @@ namespace tunnelpp::server
             session->close();
         }
         _public_server->stop();
-        _admin_server->stop();
         if (_public_thread.joinable()) {
             _public_thread.join();
-        }
-        if (_admin_thread.joinable()) {
-            _admin_thread.join();
         }
     }
 
@@ -164,11 +103,6 @@ namespace tunnelpp::server
         return _public_port;
     }
 
-    int TunnelServer::admin_port() const
-    {
-        return _admin_port;
-    }
-
     const ServerConfig& TunnelServer::config() const
     {
         return _config;
@@ -177,11 +111,6 @@ namespace tunnelpp::server
     SessionManager& TunnelServer::sessions()
     {
         return _sessions;
-    }
-
-    ServerStats& TunnelServer::stats()
-    {
-        return _stats;
     }
 
     std::string TunnelServer::public_url(const std::string& subdomain) const
@@ -196,9 +125,6 @@ namespace tunnelpp::server
 
     void TunnelServer::handle_public_request(const httplib::Request& req, httplib::Response& res)
     {
-        _stats.total_requests++;
-        _stats.bytes_in += req.body.size();
-
         if (req.method == "GET" && req.path == "/" && host_without_port(req.get_header_value("Host")) == _config.domain) {
             set_json(res, status_ok, nlohmann::json{ { "name", "tunnelpp" }, { "version", TUNNELPP_VERSION } }.dump());
             return;
@@ -219,8 +145,6 @@ namespace tunnelpp::server
         message.headers = filter_tunnel_headers(req.headers);
         message.body = req.body;
 
-        session->requests()++;
-        session->bytes_in() += req.body.size();
         const auto pending{ _pending.add(message.id, session->ws()) };
         if (!session->send(encode_message(message))) {
             _pending.remove(message.id);
@@ -240,8 +164,6 @@ namespace tunnelpp::server
                 break;
         }
 
-        _stats.bytes_out += response.body.size();
-        session->bytes_out() += response.body.size();
         res.status = response.status;
         std::string content_type{ "application/octet-stream" };
         for (const auto& [key, value] : response.headers) {
@@ -274,7 +196,6 @@ namespace tunnelpp::server
             return;
         }
         if (message->token != _config.token) {
-            _stats.rejected_registers++;
             send_ws_error(ws, "", "invalid_token", "invalid token");
             ws.close();
             return;
@@ -306,7 +227,6 @@ namespace tunnelpp::server
             ws.close();
             return;
         }
-        _stats.total_sessions++;
         spdlog::info("tunnel registered: {}", session->url());
 
         ws.set_read_timeout(std::chrono::seconds{ 0 });

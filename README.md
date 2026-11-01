@@ -17,7 +17,7 @@ flowchart LR
     C -->|HTTP| D["local service<br/>http://127.0.0.1:3000"]
 ```
 
-- **server** (`tunnelpp-server`): public HTTP listener, tunnel gateway, routing, admin API. Deployed with Docker.
+- **server** (`tunnelpp-server`): public HTTP listener, tunnel gateway, routing. Deployed with Docker.
 - **client** (`tunnelpp-client`): CLI that connects to the server and forwards traffic to a local service.
   Also distributed as the npm package `@theo-dep/tunnelpp`.
 
@@ -26,7 +26,7 @@ flowchart LR
 Run the server (TLS is terminated by a reverse proxy in front of it):
 
 ```sh
-docker run -p 8080:8080 -p 127.0.0.1:8081:8081 \
+docker run -p 8080:8080 \
     -e TUNNELPP_DOMAIN=tunnel.example.com \
     -e TUNNELPP_TOKEN=change-me \
     ghcr.io/theo-dep/tunnelpp:latest
@@ -51,7 +51,7 @@ The full documentation is in [`docs/`](docs/) and published with GitHub Pages:
 - [Client](docs/client.md) — CLI usage and the npm package
 - [Security](docs/security.md) — threat model and recommendations
 - [Development](docs/development.md) — build, test, coverage, contributing
-- [API reference](docs/api-reference.md) — admin API and protocol messages
+- [API reference](docs/api-reference.md) — public listener errors and protocol messages
 - [Roadmap](docs/roadmap.md)
 
 ## Development

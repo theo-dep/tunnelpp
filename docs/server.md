@@ -11,10 +11,8 @@ All configuration is done with environment variables:
 | -------- | ------- | ----------- |
 | `TUNNELPP_TOKEN` | **required** | shared secret clients must present in `register` |
 | `TUNNELPP_DOMAIN` | `tunnelpp.local` | base domain; tunnels are served on `<subdomain>.<domain>` |
-| `TUNNELPP_HOST` | `0.0.0.0` | bind address of both listeners |
+| `TUNNELPP_HOST` | `0.0.0.0` | bind address of the listener |
 | `TUNNELPP_HTTP_PORT` | `8080` | public HTTP/WebSocket port |
-| `TUNNELPP_ADMIN_PORT` | `8081` | admin API port (bind to localhost or protect it) |
-| `TUNNELPP_ADMIN_TOKEN` | empty | when set, the admin API requires `Authorization: Bearer <token>` |
 | `TUNNELPP_PUBLIC_SCHEME` | `http` | scheme used in the public URL sent to clients (`http` or `https`) |
 | `TUNNELPP_REQUEST_TIMEOUT` | `30` | seconds to wait for the client's response before answering `504` |
 
@@ -23,7 +21,7 @@ The server refuses to start when `TUNNELPP_TOKEN` is missing or when a port is i
 ## Docker
 
 ```sh
-docker run -p 8080:8080 -p 127.0.0.1:8081:8081 \
+docker run -p 8080:8080 \
     -e TUNNELPP_DOMAIN=tunnel.example.com \
     -e TUNNELPP_TOKEN=change-me \
     ghcr.io/theo-dep/tunnelpp:latest
@@ -73,13 +71,3 @@ tunnel.example.com, *.tunnel.example.com {
 ```
 
 With the proxy above, set `TUNNELPP_PUBLIC_SCHEME=https` so the URLs reported to clients use `https`.
-
-## Admin API
-
-Served on `TUNNELPP_ADMIN_PORT`. **Do not expose it publicly**: bind it to localhost, protect it with
-`TUNNELPP_ADMIN_TOKEN`, or both. See the [API reference](api-reference.md).
-
-- `GET /healthz` — liveness probe
-- `GET /api/v1/stats` — counters and uptime
-- `GET /api/v1/sessions` — connected tunnels
-- `DELETE /api/v1/sessions/{subdomain}` — close a tunnel

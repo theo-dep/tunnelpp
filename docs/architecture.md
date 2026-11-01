@@ -5,13 +5,10 @@
 ```
                         ┌──────────────────────────────┐
                         │         tunnelpp-server       │
-                        │  ┌─────────┐   ┌───────────┐ │
-        public HTTP ───▶│  │ public  │   │  admin    │ │──▶ admin API (localhost only)
-        (via reverse     │  │ listener│   │  listener │ │
-         proxy, TLS)     │  │  :8080  │   │  :8081    │ │
-                        │  │  + WS   │   └───────────┘ │
-                        │  │  /tunnel│                 │
-                        │  └────┬────┘                 │
+                        │  ┌─────────────────────────┐ │
+        public HTTP ───▶│  │ public listener + WS     │ │
+        (via reverse     │  │ :8080  /tunnel           │ │
+         proxy, TLS)     │  └────┬────────────────────┘ │
                         │  router + sessions + pending │
                         └───────┼──────────────────────┘
                                 │ WebSocket (outbound from the client)
@@ -30,9 +27,9 @@
 
 ### Server (`server/`, library `server_core`)
 
-- `tunnel_server.*`: `TunnelServer` — owns the two `httplib::Server` instances (public, admin), routes
+- `tunnel_server.*`: `TunnelServer` — owns the `httplib::Server` instance (public), routes
   public requests to tunnels, runs the WebSocket gateway.
-- `session.*`: `Session` (one connected tunnel: subdomain, URL, WebSocket, stats) and `SessionManager`
+- `session.*`: `Session` (one connected tunnel: subdomain, URL, WebSocket) and `SessionManager`
   (subdomain registry).
 - `pending.*`: `PendingRequestTable` — public requests waiting for the client's `response` message.
 - `router.*`: `Host` header to subdomain extraction.

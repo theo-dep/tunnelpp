@@ -72,16 +72,10 @@ namespace tunnelpp
         if (const auto value = get_env("TUNNELPP_HOST")) {
             config.host = *value;
         }
-        if (const auto value = get_env("TUNNELPP_ADMIN_TOKEN")) {
-            config.admin_token = *value;
-        }
         if (const auto value = get_env("TUNNELPP_PUBLIC_SCHEME")) {
             config.public_scheme = *value;
         }
         if (!env_int("TUNNELPP_HTTP_PORT", config.http_port)) {
-            return std::nullopt;
-        }
-        if (!env_int("TUNNELPP_ADMIN_PORT", config.admin_port)) {
             return std::nullopt;
         }
         if (!env_int("TUNNELPP_REQUEST_TIMEOUT", config.request_timeout_seconds)) {

@@ -67,7 +67,6 @@ namespace
         config.token = "secret";
         config.host = "127.0.0.1";
         config.http_port = 0;
-        config.admin_port = 0;
         return TunnelServer{ config };
     }
 
@@ -136,47 +135,6 @@ TEST_CASE("e2e http request through the tunnel")
     server.stop();
 }
 
-TEST_CASE("e2e admin api")
-{
-    EchoServer echo;
-    auto server{ make_server() };
-    REQUIRE(server.start());
-
-    TunnelClient client{ make_client_config(server.public_port(), echo.port(), "secret", "e2e-app") };
-    std::thread client_thread{ [&] { client.run(); } };
-    REQUIRE(wait_for([&] { return client.is_registered(); }, 5));
-
-    httplib::Client admin{ "127.0.0.1", server.admin_port() };
-    admin.set_read_timeout(5, 0);
-
-    const auto health{ admin.Get("/healthz") };
-    REQUIRE(health);
-    REQUIRE(health->status == 200);
-    REQUIRE(nlohmann::json::parse(health->body).at("status") == "ok");
-
-    const auto sessions{ admin.Get("/api/v1/sessions") };
-    REQUIRE(sessions);
-    REQUIRE(sessions->status == 200);
-    const auto sessions_body = nlohmann::json::parse(sessions->body);
-    REQUIRE(sessions_body.at("sessions").size() == 1);
-    REQUIRE(sessions_body.at("sessions").at(0).at("subdomain") == "e2e-app");
-
-    httplib::Client http{ "127.0.0.1", server.public_port() };
-    http.set_read_timeout(10, 0);
-    REQUIRE(http.Get("/", httplib::Headers{ { "Host", "e2e-app.tunnel.test" } }));
-
-    const auto stats{ admin.Get("/api/v1/stats") };
-    REQUIRE(stats);
-    REQUIRE(stats->status == 200);
-    const auto stats_body = nlohmann::json::parse(stats->body);
-    REQUIRE(stats_body.at("active_sessions") == 1);
-    REQUIRE(stats_body.at("total_requests") >= 1);
-
-    client.stop();
-    client_thread.join();
-    server.stop();
-}
-
 TEST_CASE("e2e wrong token is rejected")
 {
     EchoServer echo;
@@ -188,7 +146,6 @@ TEST_CASE("e2e wrong token is rejected")
     REQUIRE(wait_for([&] { return client.fatal(); }, 5));
     REQUIRE(!client.is_registered());
     client_thread.join();
-    REQUIRE(server.stats().rejected_registers >= 1);
     server.stop();
 }
 
