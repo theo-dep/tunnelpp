@@ -82,6 +82,65 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm publish ./client/npm --access public
 
+  # Tags checked out at v{version} (not the triggering push): GITHUB_REF is still refs/heads/main,
+  # so metadata-action's type=semver cannot match. Tags are computed from the release version instead.
+  # provenance/sbom are disabled: their attestation manifests are pushed by digest without platform
+  # (GHCR lists them as untagged unknown/unknown entries).
+  publish-docker:
+    name: publish-docker
+    needs: semantic-release
+    if: needs.semantic-release.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.semantic-release.outputs.version }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image tags
+        id: tags
+        env:
+          VERSION: ${{ needs.semantic-release.outputs.version }}
+        run: |
+          set -euo pipefail
+          tags="ghcr.io/theo-dep/tunnelpp:${VERSION}"
+          # Prereleases (0.1.0-alpha.1) only get the full version tag:
+          # rolling tags (0.1, latest) are reserved for stable releases.
+          if [[ "$VERSION" != *"-"* ]]; then
+            tags="${tags},ghcr.io/theo-dep/tunnelpp:${VERSION%.*},ghcr.io/theo-dep/tunnelpp:latest"
+          fi
+          echo "tags=${tags}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: server/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          labels: |
+            org.opencontainers.image.title=tunnelpp
+            org.opencontainers.image.description=Tunnelpp server image
+            org.opencontainers.image.version=${{ needs.semantic-release.outputs.version }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
+          sbom: false
+
   build:
     name: build (${{ matrix.target }})
     needs: semantic-release
