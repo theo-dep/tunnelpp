@@ -13,6 +13,7 @@ namespace tunnelpp
         std::string host{ "0.0.0.0" };
         int http_port{ 8080 };
         std::string public_scheme{ "http" };
+        int public_port{ 0 };
         int request_timeout_seconds{ 30 };
     };
 

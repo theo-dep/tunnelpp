@@ -117,8 +117,9 @@ namespace tunnelpp::server
     {
         std::string url{ _config.public_scheme + "://" + subdomain + "." + _config.domain };
         const int default_port{ _config.public_scheme == "https" ? https_port : http_port };
-        if (_public_port != default_port) {
-            url += ":" + std::to_string(_public_port);
+        const int port{ _config.public_port > 0 ? _config.public_port : _public_port };
+        if (port != default_port) {
+            url += ":" + std::to_string(port);
         }
         return url;
     }

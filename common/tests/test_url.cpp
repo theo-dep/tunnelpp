@@ -4,12 +4,12 @@
 
 TEST_CASE("parse_url full")
 {
-    const auto url{ tunnelpp::parse_url("ws://example.com:8080/tunnel?x=1") };
+    const auto url{ tunnelpp::parse_url("ws://example.com:8080/ws?x=1") };
     REQUIRE(url);
     REQUIRE(url->scheme == "ws");
     REQUIRE(url->host == "example.com");
     REQUIRE(url->port == 8080);
-    REQUIRE(url->path == "/tunnel?x=1");
+    REQUIRE(url->path == "/ws?x=1");
 }
 
 TEST_CASE("parse_url defaults")
@@ -22,7 +22,7 @@ TEST_CASE("parse_url defaults")
     REQUIRE(url->path == "/");
     REQUIRE(url->port_or_default() == 80);
 
-    const auto secure{ tunnelpp::parse_url("wss://example.com/tunnel") };
+    const auto secure{ tunnelpp::parse_url("wss://example.com/ws") };
     REQUIRE(secure);
     REQUIRE(secure->port_or_default() == 443);
 }

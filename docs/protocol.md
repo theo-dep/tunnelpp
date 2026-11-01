@@ -41,7 +41,8 @@ The client generates a random subdomain when the user does not request one.
 }
 ```
 
-`url` is built from `TUNNELPP_PUBLIC_SCHEME`, the subdomain, `TUNNELPP_DOMAIN` and the public port.
+`url` is built from `TUNNELPP_PUBLIC_SCHEME`, the subdomain, `TUNNELPP_DOMAIN` and the public port
+(`TUNNELPP_PUBLIC_PORT`, or the bound `TUNNELPP_HTTP_PORT` when unset).
 
 ### `request` — server → client
 

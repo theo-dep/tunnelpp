@@ -11,6 +11,7 @@ namespace
         tunnelpp::unset_env("TUNNELPP_TOKEN");
         tunnelpp::unset_env("TUNNELPP_HTTP_PORT");
         tunnelpp::unset_env("TUNNELPP_PUBLIC_SCHEME");
+        tunnelpp::unset_env("TUNNELPP_PUBLIC_PORT");
         tunnelpp::unset_env("TUNNELPP_REQUEST_TIMEOUT");
     }
 }
@@ -26,6 +27,7 @@ TEST_CASE("load_server_config defaults")
     REQUIRE(config->token == "secret");
     REQUIRE(config->http_port == 8080);
     REQUIRE(config->public_scheme == "http");
+    REQUIRE(config->public_port == 0);
     REQUIRE(config->request_timeout_seconds == 30);
     clear_env();
 }
@@ -38,6 +40,7 @@ TEST_CASE("load_server_config custom values")
     REQUIRE(tunnelpp::set_env("TUNNELPP_HOST", "127.0.0.1"));
     REQUIRE(tunnelpp::set_env("TUNNELPP_HTTP_PORT", "9000"));
     REQUIRE(tunnelpp::set_env("TUNNELPP_PUBLIC_SCHEME", "https"));
+    REQUIRE(tunnelpp::set_env("TUNNELPP_PUBLIC_PORT", "443"));
     REQUIRE(tunnelpp::set_env("TUNNELPP_REQUEST_TIMEOUT", "10"));
     const auto config{ tunnelpp::load_server_config() };
     REQUIRE(config);
@@ -45,6 +48,7 @@ TEST_CASE("load_server_config custom values")
     REQUIRE(config->host == "127.0.0.1");
     REQUIRE(config->http_port == 9000);
     REQUIRE(config->public_scheme == "https");
+    REQUIRE(config->public_port == 443);
     REQUIRE(config->request_timeout_seconds == 10);
     clear_env();
 }
@@ -58,6 +62,17 @@ TEST_CASE("load_server_config requires a token")
     clear_env();
 }
 
+TEST_CASE("load_server_config accepts TUNNELPP_PUBLIC_PORT=0")
+{
+    clear_env();
+    REQUIRE(tunnelpp::set_env("TUNNELPP_TOKEN", "secret"));
+    REQUIRE(tunnelpp::set_env("TUNNELPP_PUBLIC_PORT", "0"));
+    const auto config{ tunnelpp::load_server_config() };
+    REQUIRE(config);
+    REQUIRE(config->public_port == 0);
+    clear_env();
+}
+
 TEST_CASE("load_server_config rejects invalid values")
 {
     clear_env();
@@ -68,6 +83,11 @@ TEST_CASE("load_server_config rejects invalid values")
     REQUIRE(!tunnelpp::load_server_config());
     REQUIRE(tunnelpp::set_env("TUNNELPP_HTTP_PORT", "8080"));
     REQUIRE(tunnelpp::set_env("TUNNELPP_PUBLIC_SCHEME", "ftp"));
+    REQUIRE(!tunnelpp::load_server_config());
+    REQUIRE(tunnelpp::set_env("TUNNELPP_PUBLIC_SCHEME", "https"));
+    REQUIRE(tunnelpp::set_env("TUNNELPP_PUBLIC_PORT", "abc"));
+    REQUIRE(!tunnelpp::load_server_config());
+    REQUIRE(tunnelpp::set_env("TUNNELPP_PUBLIC_PORT", "70000"));
     REQUIRE(!tunnelpp::load_server_config());
     clear_env();
 }

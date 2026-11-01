@@ -4,9 +4,8 @@
 
 namespace tunnelpp
 {
-    static bool env_int(const char* name, int& target)
+    static bool env_int_in_range(const char* name, int& target, int min, int max)
     {
-        constexpr int max_port{ 65535 };
         const auto value{ get_env(name) };
         if (!value) {
             return true;
@@ -14,7 +13,7 @@ namespace tunnelpp
         try {
             std::size_t pos{ 0 };
             const int parsed{ std::stoi(*value, &pos) };
-            if (pos != value->size() || parsed < 1 || parsed > max_port) {
+            if (pos != value->size() || parsed < min || parsed > max) {
                 return false;
             }
             target = parsed;
@@ -22,6 +21,18 @@ namespace tunnelpp
         } catch (const std::exception&) {
             return false;
         }
+    }
+
+    static bool env_int(const char* name, int& target)
+    {
+        constexpr int max_port{ 65535 };
+        return env_int_in_range(name, target, 1, max_port);
+    }
+
+    static bool env_int_zero(const char* name, int& target)
+    {
+        constexpr int max_port{ 65535 };
+        return env_int_in_range(name, target, 0, max_port);
     }
 
     std::optional<std::string> get_env(std::string_view name)
@@ -74,6 +85,9 @@ namespace tunnelpp
         }
         if (const auto value = get_env("TUNNELPP_PUBLIC_SCHEME")) {
             config.public_scheme = *value;
+        }
+        if (!env_int_zero("TUNNELPP_PUBLIC_PORT", config.public_port)) {
+            return std::nullopt;
         }
         if (!env_int("TUNNELPP_HTTP_PORT", config.http_port)) {
             return std::nullopt;
