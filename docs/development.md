@@ -88,6 +88,5 @@ Do not add dependencies without asking.
 
 - `.github/workflows/ci.yml` — build + tests on Linux, Windows and macOS (clang), plus a clang-tidy build.
 - `.github/workflows/coverage.yml` — coverage report artifact.
-- `.github/workflows/release.yml` — prebuilt binaries per platform on tags `v*`.
-- `.github/workflows/docker.yml` — server image to GHCR.
+- `.github/workflows/release.yml` — semantic-release: prebuilt binaries per platform, npm client package and server Docker image (GHCR) on releases.
 - `.github/workflows/docs.yml` — publishes this documentation to GitHub Pages.

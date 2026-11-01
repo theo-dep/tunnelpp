@@ -9,9 +9,8 @@ workflows, composite actions, Dependabot configuration.
 |---|---|---|---|
 | CI | `workflows/ci.yml` | push to `main`, PR | Multi-OS build + tests, clang-tidy lint |
 | Coverage | `workflows/coverage.yml` | push to `main`, manual | LLVM coverage report (artifact) |
-| Docker | `workflows/docker.yml` | push to `main` (path-filtered), published release | Build and push `ghcr.io/theo-dep/tunnelpp` image |
 | Docs | `workflows/docs.yml` | push to `main` (path-filtered), manual | Build MkDocs and deploy GitHub Pages |
-| Release | `workflows/release.yml` | push to `main` | Semantic-release (conventional commits) + multi-platform binaries |
+| Release | `workflows/release.yml` | push to `main` | Semantic-release (conventional commits): binaries, npm package, Docker image |
 
 ## Workflows in detail
 
@@ -38,15 +37,6 @@ Two jobs:
 - Excludes `vcpkg_installed/`, `/usr/`, `build/` from the report
 - Uploads the `coverage-report` artifact (HTML + profdata)
 
-### Docker (`docker.yml`)
-
-- Triggered on push to `main` when `server/**`, `common/**`, `vcpkg.json`, `CMakeLists.txt`, `CMakePresets.json` change
-- Also triggered on published `release`
-- QEMU + Buildx for multi-arch
-- Tags: semver (`v1.2.3` → `1.2.3`, `1.2`), short SHA
-- GHA cache (`cache-from`/`cache-to` type=gha, mode=max)
-- Pushes to `ghcr.io/theo-dep/tunnelpp`
-
 ### Docs (`docs.yml`)
 
 - Triggered on push to `main` when `docs/**` or `mkdocs.yml` change, or manually
@@ -64,7 +54,18 @@ Two phases:
   - Outputs `released` (true/false) and `version` for downstream jobs
   - Version rules: `feat` → minor bump (0.x.y → 0.x+1.0), `fix`/`perf` → patch bump (0.x.y → 0.x.y+1). `chore`, `docs`, `ci`, etc. do not trigger a release.
 
-- **build** — 5-target matrix, only runs when `released == 'true'`
+- **publish-npm** — only runs when `released == 'true'`
+  - Checks out the release tag `v{version}` (npm package version is synced by semantic-release's `build_command`)
+  - Publishes `@theo-dep/tunnelpp` to GitHub Packages npm registry
+
+- **publish-docker** — only runs when `released == 'true'`
+  - Checks out the release tag `v{version}`
+  - QEMU + Buildx, multi-arch (`linux/amd64`, `linux/arm64`)
+  - Tags `ghcr.io/theo-dep/tunnelpp`: `{version}` always; `{major}.{minor}` and `latest` only on stable releases (not prereleases)
+  - `provenance: false` + `sbom: false`: attestation manifests are pushed by digest without platform, GHCR lists them as untagged `unknown/unknown` entries
+  - GHA cache (`cache-from`/`cache-to` type=gha, mode=max)
+
+- **build** — 9-target matrix, only runs when `released == 'true'`
   - Checks out the release tag `v{version}`
   - Release build with the `clang` preset (no sanitizers)
   - Packages as `.zip` (Windows) or `.tar.gz` (others)
@@ -115,8 +116,7 @@ vcpkg uses `fix(deps)` because C++ dependency updates often include security fix
 All workflows follow the principle of least privilege:
 
 - `ci.yml`, `coverage.yml`: `contents: read` + `packages: write` (for the vcpkg binary cache on GitHub Packages)
-- `release.yml`: `contents: write` (semantic-release pushes commits/tags, creates releases) + `packages: write`
-- `docker.yml`: `contents: read` + `packages: write` (push to GHCR)
+- `release.yml`: `contents: write` (semantic-release pushes commits/tags, creates releases) + `packages: write` (vcpkg binary cache, npm registry, GHCR push)
 - `docs.yml`: `contents: read` + `pages: write` + `id-token: write` (Pages deployment)
 
 ## Conventions
@@ -125,7 +125,7 @@ All workflows follow the principle of least privilege:
 - **Preserve CMake presets.** Workflows use the presets defined in `CMakePresets.json` (`clang`, `clang-test`, `clang-lint`). Do not replace them with inline CMake commands.
 - **The vcpkg binary cache is mandatory.** All build workflows use the `setup-vcpkg` action. Do not remove the cache — builds would be much slower.
 - **Matrix `fail-fast: false`.** When adding a matrix job, always set `fail-fast: false` so all OSes run even if one fails.
-- **Path filters.** `docker.yml` and `docs.yml` use path filters to avoid running unnecessarily. Add or modify them carefully.
+- **Path filters.** `docs.yml` uses path filters to avoid running unnecessarily. Add or modify them carefully. The Docker image is published only on releases (`release.yml`), never on plain pushes to `main`.
 - **Naming conventions.** Job names use the format `name (${{ matrix.os }})` or `name (${{ matrix.target }})` when a matrix is involved.
 - **Dependabot**: do not change the schedule (weekly is a good compromise). Add a new ecosystem only if the project adopts a new dependency manager.
 - **Semantic release**: never create version tags manually. Push conventional commits to `main` (`feat:` for minor, `fix:` for patch) and let `python-semantic-release` handle the rest. The version in `pyproject.toml`, `CMakeLists.txt`, `vcpkg.json` and `client/npm/package.json` is managed automatically — do not edit it by hand.
