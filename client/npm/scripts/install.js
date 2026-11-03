@@ -12,6 +12,7 @@ const assets = {
   "linux-x64": "tunnelpp-client-linux-x64.tar.gz",
   "linux-arm64": "tunnelpp-client-linux-arm64.tar.gz",
   "darwin-arm64": "tunnelpp-client-darwin-arm64.tar.gz",
+  "darwin-x64": "tunnelpp-client-darwin-x64.tar.gz",
   "win32-x64": "tunnelpp-client-win32-x64.zip",
   "win32-arm64": "tunnelpp-client-win32-arm64.zip",
 };

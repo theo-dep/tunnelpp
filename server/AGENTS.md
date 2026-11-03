@@ -18,8 +18,8 @@ This file inherits the root `AGENTS.md` rules (see Hierarchy there).
 
 ## Layout
 
-- `tunnel_server.*`: `TunnelServer`: public listener (HTTP + WebSocket gateway `/tunnel`), admin listener,
-  request routing, stats. Owns the `httplib::Server` instances behind `unique_ptr` (forward declared).
+- `tunnel_server.*`: `TunnelServer`: public listener (HTTP + WebSocket gateway `/`), request routing.
+  Owns the `httplib::Server` instance behind `unique_ptr` (forward declared).
 - `session.*`: `Session` (one connected tunnel) and `SessionManager` (subdomain registry).
 - `pending.*`: `PendingRequestTable`: public requests waiting for the client response over WebSocket.
 - `router.*`: `Host` header to subdomain extraction.
@@ -40,4 +40,3 @@ Same rules as the root `AGENTS.md`.
 ## Do not
 
 - Terminate TLS in the server: it sits behind a reverse proxy (see `docs/server.md` and `docs/security.md`).
-- Expose the admin port publicly: bind it to localhost or an internal network, or set `TUNNELPP_ADMIN_TOKEN`.

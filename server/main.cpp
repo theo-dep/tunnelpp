@@ -38,7 +38,6 @@ int main()
     }
     spdlog::info("tunnelpp-server {} listening", TUNNELPP_VERSION);
     spdlog::info("public listener on {}:{}", config->host, server.public_port());
-    spdlog::info("admin listener on {}:{}", config->host, server.admin_port());
     spdlog::info("domain: {}", config->domain);
 
     std::signal(SIGINT, on_signal);

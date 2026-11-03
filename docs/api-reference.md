@@ -1,60 +1,6 @@
 # API reference
 
-## Admin API
-
-Served on `TUNNELPP_ADMIN_PORT` (default `8081`). When `TUNNELPP_ADMIN_TOKEN` is set, every endpoint
-requires the header `Authorization: Bearer <TUNNELPP_ADMIN_TOKEN>`.
-
-### `GET /healthz`
-
-Liveness probe.
-
-```json
-{ "status": "ok" }
-```
-
-### `GET /api/v1/stats`
-
-```json
-{
-    "active_sessions": 1,
-    "total_sessions": 3,
-    "total_requests": 42,
-    "bytes_in": 1024,
-    "bytes_out": 8192,
-    "rejected_registers": 0,
-    "uptime_seconds": 3600
-}
-```
-
-### `GET /api/v1/sessions`
-
-```json
-{
-    "sessions": [
-        {
-            "subdomain": "my-app",
-            "url": "http://my-app.tunnel.example.com:8080",
-            "connected_at": 1767225600,
-            "requests": 12,
-            "bytes_in": 512,
-            "bytes_out": 4096
-        }
-    ]
-}
-```
-
-`connected_at` is a Unix timestamp (seconds).
-
-### `DELETE /api/v1/sessions/{subdomain}`
-
-Closes the tunnel: the client's WebSocket is closed and the client reconnects (with a new subdomain when the
-subdomain was auto-generated). Pending requests on the tunnel fail with `502`.
-
-- `200` `{"closed":true}` — the tunnel was found and closed
-- `404` `{"error":"session_not_found"}` — no tunnel on this subdomain
-
-### Public listener errors
+## Public listener errors
 
 | Status | Body | Cause |
 | ------ | ---- | ----- |

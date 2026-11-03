@@ -10,7 +10,7 @@ GitHub releases of this repository) and exposes it as a CLI and a small JS API.
 
 ```sh
 npm install -g @theo-dep/tunnelpp
-tunnelpp-client --server ws://tunnel.example.com/tunnel --token change-me --local http://127.0.0.1:3000
+tunnelpp-client --server ws://tunnel.example.com --token change-me --local http://127.0.0.1:3000
 ```
 
 ## JS API
@@ -19,7 +19,7 @@ tunnelpp-client --server ws://tunnel.example.com/tunnel --token change-me --loca
 const { startTunnel } = require('@theo-dep/tunnelpp');
 
 const child = startTunnel({
-    server: 'ws://tunnel.example.com/tunnel',
+    server: 'ws://tunnel.example.com',
     token: 'change-me',
     local: 'http://127.0.0.1:3000',
     // subdomain: 'my-app',        // optional, random when omitted

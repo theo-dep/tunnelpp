@@ -39,7 +39,7 @@
       "program": "${workspaceFolder}/build/clang/client/Debug/tunnelpp-client",
       "args": [
         "--server",
-        "ws://127.0.0.1:8080/tunnel",
+        "ws://127.0.0.1:8080",
         "--token",
         "dev-token",
         "--local",

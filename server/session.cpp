@@ -10,7 +10,6 @@ namespace tunnelpp::server
         : _subdomain{ std::move(subdomain) }
         , _url{ std::move(url) }
         , _ws{ ws }
-        , _connected_at{ std::chrono::system_clock::now() }
     {
     }
 
@@ -29,11 +28,6 @@ namespace tunnelpp::server
         return _ws;
     }
 
-    std::chrono::system_clock::time_point Session::connected_at() const
-    {
-        return _connected_at;
-    }
-
     bool Session::send(const std::string& data)
     {
         return _ws != nullptr && _ws->send(data);
@@ -49,21 +43,6 @@ namespace tunnelpp::server
     bool Session::is_open() const
     {
         return _ws != nullptr && _ws->is_open();
-    }
-
-    std::atomic<uint64_t>& Session::requests()
-    {
-        return _requests;
-    }
-
-    std::atomic<uint64_t>& Session::bytes_in()
-    {
-        return _bytes_in;
-    }
-
-    std::atomic<uint64_t>& Session::bytes_out()
-    {
-        return _bytes_out;
     }
 
     RegisterResult SessionManager::register_session(const std::string& subdomain, const std::string& url, httplib::ws::WebSocket* ws, std::shared_ptr<Session>& out)

@@ -17,7 +17,7 @@ TEST_CASE("parse_options valid")
     const auto options{ parse_options(args({
         "tunnelpp-client",
         "--server",
-        "ws://127.0.0.1:8080/tunnel",
+        "ws://127.0.0.1:8080",
         "--token",
         "secret",
         "--local",
@@ -29,7 +29,7 @@ TEST_CASE("parse_options valid")
         "--verbose",
     })) };
     REQUIRE(options);
-    REQUIRE(options->server_url == "ws://127.0.0.1:8080/tunnel");
+    REQUIRE(options->server_url == "ws://127.0.0.1:8080/");
     REQUIRE(options->token == "secret");
     REQUIRE(options->local.scheme == "http");
     REQUIRE(options->local.host == "127.0.0.1");
@@ -44,11 +44,12 @@ TEST_CASE("parse_options defaults")
     const auto options{ parse_options(args({
         "tunnelpp-client",
         "--server",
-        "wss://tunnel.example.com/tunnel",
+        "wss://tunnel.example.com",
         "--token",
         "secret",
     })) };
     REQUIRE(options);
+    REQUIRE(options->server_url == "wss://tunnel.example.com/");
     REQUIRE(options->local.scheme == "http");
     REQUIRE(options->local.host == "127.0.0.1");
     REQUIRE(options->local.port == 8080);

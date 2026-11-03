@@ -12,7 +12,7 @@ public request -> tunnelpp-server (sub.domain.tld) -> WebSocket -> tunnelpp-clie
 
 | Component | Distribution | Role |
 | --------- | ------------ | ---- |
-| `tunnelpp-server` | Docker image (`ghcr.io/theo-dep/tunnelpp`) | Public HTTP listener, tunnel gateway, routing, admin API |
+| `tunnelpp-server` | Docker image (`ghcr.io/theo-dep/tunnelpp`) | Public HTTP listener, tunnel gateway, routing |
 | `tunnelpp-client` | Binary releases + npm package (`@theo-dep/tunnelpp`) | Connects to the server, forwards traffic to a local service |
 
 ## Quickstart
@@ -20,7 +20,7 @@ public request -> tunnelpp-server (sub.domain.tld) -> WebSocket -> tunnelpp-clie
 Run the server (it expects to sit behind a reverse proxy that terminates TLS):
 
 ```sh
-docker run -p 8080:8080 -p 127.0.0.1:8081:8081 \
+docker run -p 8080:8080 \
     -e TUNNELPP_DOMAIN=tunnel.example.com \
     -e TUNNELPP_TOKEN=change-me \
     ghcr.io/theo-dep/tunnelpp:latest
@@ -30,7 +30,7 @@ Expose a local service:
 
 ```sh
 npm install -g @theo-dep/tunnelpp
-tunnelpp-client --server ws://tunnel.example.com/tunnel --token change-me --local http://127.0.0.1:3000
+tunnelpp-client --server ws://tunnel.example.com --token change-me --local http://127.0.0.1:3000
 # tunnel ready: https://my-app.tunnel.example.com -> http://127.0.0.1:3000
 ```
 

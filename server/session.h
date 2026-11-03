@@ -1,8 +1,5 @@
 #pragma once
 
-#include <atomic>
-#include <chrono>
-#include <cstdint>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -25,24 +22,15 @@ namespace tunnelpp::server
         const std::string& subdomain() const;
         const std::string& url() const;
         httplib::ws::WebSocket* ws() const;
-        std::chrono::system_clock::time_point connected_at() const;
 
         bool send(const std::string& data);
         void close();
         bool is_open() const;
 
-        std::atomic<uint64_t>& requests();
-        std::atomic<uint64_t>& bytes_in();
-        std::atomic<uint64_t>& bytes_out();
-
     private:
         std::string _subdomain;
         std::string _url;
         httplib::ws::WebSocket* _ws;
-        std::chrono::system_clock::time_point _connected_at;
-        std::atomic<uint64_t> _requests{ 0 };
-        std::atomic<uint64_t> _bytes_in{ 0 };
-        std::atomic<uint64_t> _bytes_out{ 0 };
     };
 
     enum class RegisterResult
