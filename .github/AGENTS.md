@@ -65,7 +65,7 @@ Two phases:
   - `provenance: false` + `sbom: false`: attestation manifests are pushed by digest without platform, GHCR lists them as untagged `unknown/unknown` entries
   - GHA cache (`cache-from`/`cache-to` type=gha, mode=max)
 
-- **build** — 9-target matrix, only runs when `released == 'true'`
+- **build** — 11-target matrix, only runs when `released == 'true'`
   - Checks out the release tag `v{version}`
   - Release build with the `clang` preset (no sanitizers)
   - Packages as `.zip` (Windows) or `.tar.gz` (others)

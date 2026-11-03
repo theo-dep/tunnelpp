@@ -42,7 +42,7 @@ tunnelpp-client --server wss://tunnel.example.com --token change-me --local http
 
 At install time, the package downloads the prebuilt binary for the current platform from the GitHub
 releases (`tunnelpp-client-<platform>-<arch>.tar.gz`, `.zip` on Windows). Supported platforms: linux (x64,
-arm64), macOS (arm64), Windows (x64, arm64). The download location can be overridden with the `TUNNELPP_REPO`
+arm64), macOS (x64, arm64), Windows (x64, arm64). The download location can be overridden with the `TUNNELPP_REPO`
 environment variable (`<owner>/<repo>`).
 
 ### JS API
