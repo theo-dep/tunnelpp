@@ -70,6 +70,9 @@ Two phases:
   - Release build with the `clang` preset (no sanitizers)
   - Packages as `.zip` (Windows) or `.tar.gz` (others)
   - Uploads binaries to the GitHub release created by semantic-release
+  - The supported platform list lives in 4 places that must stay in sync: this matrix (one base target
+    per platform-arch), `client/npm/scripts/install.js` (asset map), `docs/client.md` and
+    `client/npm/README.md` ("Supported platforms"). Any change to one updates the three others.
 
 ## Semantic release configuration
 
