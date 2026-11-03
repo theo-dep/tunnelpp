@@ -24,9 +24,15 @@ jobs:
       released: ${{ steps.sr.outputs.released }}
       version: ${{ steps.sr.outputs.version }}
     steps:
+      # Checkout with the PAT: the persisted git credential (http extraheader) takes
+      # precedence over the token embedded in semantic-release's push URL. Without this,
+      # the release commit is pushed as github-actions[bot] (GITHUB_TOKEN) and rejected
+      # by the `main` ruleset (GH013). With the PAT, the push is authenticated as its
+      # owner, a bypass actor of the ruleset.
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT }}
 
       - name: Set git config
         run: |
