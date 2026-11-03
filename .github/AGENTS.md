@@ -83,7 +83,7 @@ Two phases:
   - `vcpkg.json` — `"version-string"`
   - `client/npm/package.json` — `"version"`
 - **Tag format**: `v{version}` (e.g. `v0.2.0`)
-- **Changelog**: auto-generated in `CHANGELOG.md`, release commits excluded
+- **Changelog**: auto-generated in `CHANGELOG.md`, release commits excluded; only release-triggering commits are listed (`feat`, `fix`, `perf`, and their breaking variants) — all other types (`ci`, `chore`, `build`, `docs`, etc.) are excluded via `changelog.exclude_commit_patterns`
 - **Commit parser**: conventional commits. `minor_tags = ["feat"]`, `patch_tags = ["fix", "perf"]`
 - **Zero version**: `allow_zero_version = true`, `major_on_zero = false` (0.x → minor bump on `feat`)
 - **Release commit message**: `chore(release): {version} [skip ci]` — the `[skip ci]` prevents re-triggering all workflows on the version-bump commit
