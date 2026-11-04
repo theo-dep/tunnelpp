@@ -30,13 +30,14 @@ docker run -p 8080:8080 \
 Or with the provided compose file:
 
 ```sh
-TUNNELPP_TOKEN=change-me TUNNELPP_DOMAIN=tunnel.example.com docker compose up --build
+TUNNELPP_TOKEN=change-me TUNNELPP_DOMAIN=tunnel.example.com docker compose up -d
 ```
 
-Build the image yourself:
+Build the image from a published release (the server binary is downloaded from the GitHub release of
+`VERSION`, not compiled from source):
 
 ```sh
-docker build -f server/Dockerfile -t tunnelpp-server .
+docker build --build-arg VERSION=1.2.3 -f server/Dockerfile -t tunnelpp-server .
 ```
 
 ## Reverse proxy

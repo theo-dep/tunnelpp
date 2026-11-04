@@ -92,9 +92,11 @@ jobs:
   # so metadata-action's type=semver cannot match. Tags are computed from the release version instead.
   # provenance/sbom are disabled: their attestation manifests are pushed by digest without platform
   # (GHCR lists them as untagged unknown/unknown entries).
+  # The Dockerfile packages the release binary (downloaded by build-arg VERSION) instead of
+  # compiling: it needs the "build" matrix assets to be uploaded to the release first.
   publish-docker:
     name: publish-docker
-    needs: semantic-release
+    needs: [semantic-release, build]
     if: needs.semantic-release.outputs.released == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -136,6 +138,8 @@ jobs:
           file: server/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
+          build-args: |
+            VERSION=${{ needs.semantic-release.outputs.version }}
           tags: ${{ steps.tags.outputs.tags }}
           labels: |
             org.opencontainers.image.title=tunnelpp

@@ -1,8 +1,6 @@
 services:
   tunnelpp-server:
-    build:
-      context: .
-      dockerfile: server/Dockerfile
+    image: ghcr.io/theo-dep/tunnelpp:latest
     environment:
       TUNNELPP_DOMAIN: ${TUNNELPP_DOMAIN:-tunnel.example.com}
       TUNNELPP_TOKEN: ${TUNNELPP_TOKEN:?set TUNNELPP_TOKEN in the environment or in .env}

@@ -75,7 +75,7 @@ Keep one separate entry for the apex `tunnel.example.com` (a wildcard never cove
 The box forwards ports 80/443 to the host running nginx. The server and the proxy see the original `Host` header, so nothing changes:
 
 ```sh
-docker run -p 8080:8080 -p 127.0.0.1:8081:8081 \
+docker run -p 8080:8080 \
     -e TUNNELPP_DOMAIN=tunnel.example.com \
     -e TUNNELPP_TOKEN=change-me \
     -e TUNNELPP_PUBLIC_SCHEME=https \
