@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.1.0-alpha.3 (2026-11-04)
+
+### Features
+
+- **server**: Optionnally remove client public port when behind a reverse proxy
+  ([`a72b87f`](https://github.com/theo-dep/tunnelpp/commit/a72b87fd686159a200a6381a2662547db7ea9c10))
+
+
 ## v0.1.0-alpha.2 (2026-11-03)
 
 ### Features
