@@ -2,27 +2,30 @@
 
 ## Components
 
-```
-                        ┌──────────────────────────────┐
-                        │         tunnelpp-server       │
-                        │  ┌─────────────────────────┐ │
-        public HTTP ───▶│  │ public listener + WS     │ │
-        (via reverse     │  │ :8080  /                        │ │
-         proxy, TLS)     │  └────┬────────────────────┘ │
-                        │  router + sessions + pending │
-                        └───────┼──────────────────────┘
-                                │ WebSocket (outbound from the client)
-                        ┌───────┼──────────────────────┐
-                        │       ▼                      │
-                        │  ┌────────────────────┐      │
-                        │  │   tunnelpp-client   │      │
-                        │  │  register + backoff │      │
-                        │  │  worker per request │      │
-                        │  └─────────┬──────────┘      │
-                        │            │ HTTP             │
-                        │            ▼                  │
-                        │     local service :3000       │
-                        └───────────────────────────────┘
+```mermaid
+flowchart TD
+    V([Public visitor])
+    RP("Reverse proxy<br>(TLS)")
+    L([Local service :3000])
+
+    subgraph server ["tunnelpp-server"]
+        SL["public listener :8080<br>+ WebSocket gateway"]
+        RT["router<br>Host header → subdomain"]
+        SM["session manager"]
+        PT["pending request table"]
+        SL --> RT
+        RT --> SM
+        RT --> PT
+    end
+
+    subgraph client ["tunnelpp-client"]
+        TC["register + reconnect backoff<br>one worker per request"]
+    end
+
+    V -- "public HTTP<br>my-app.tunnel.example.com" --> RP
+    RP --> SL
+    SM <-. "WebSocket tunnel<br>(outbound from the client)" .-> TC
+    TC -- "HTTP" --> L
 ```
 
 ### Server (`server/`, library `server_core`)
