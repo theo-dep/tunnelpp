@@ -30,4 +30,4 @@ See the [client documentation](https://theo-dep.github.io/tunnelpp/client/) for 
 
 ## Supported platforms
 
-linux (x64, arm64), macOS (arm64), Windows (x64, arm64).
+linux (x64, arm64), macOS (x64, arm64), Windows (x64, arm64).

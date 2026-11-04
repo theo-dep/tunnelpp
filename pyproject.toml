@@ -17,7 +17,10 @@ prerelease = true
 prerelease_token = "alpha"
 
 [tool.semantic_release.changelog]
-exclude_commit_patterns = ["^chore\\(release\\):"]
+exclude_commit_patterns = [
+    "^chore\\(release\\):",
+    "^(?:build|chore|ci|docs|refactor|revert|style|test)(?:\\([^)]*\\))?!?:",
+]
 
 [tool.semantic_release.commit_parser_options]
 allowed_tags = ["build", "chore", "ci", "docs", "feat", "fix", "perf", "refactor", "revert", "style", "test"]

@@ -40,3 +40,5 @@ Same rules as the root `AGENTS.md`.
 
 - Change the npm package name (`@theo-dep/tunnelpp`) or its binary download URL scheme without updating
   `docs/client.md` and the release workflow.
+- Change the supported platform list (release `build` matrix, `npm/scripts/install.js` asset map,
+  `docs/client.md`, `npm/README.md`) in one place without updating the three others.

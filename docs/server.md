@@ -14,6 +14,7 @@ All configuration is done with environment variables:
 | `TUNNELPP_HOST` | `0.0.0.0` | bind address of the listener |
 | `TUNNELPP_HTTP_PORT` | `8080` | public HTTP/WebSocket port |
 | `TUNNELPP_PUBLIC_SCHEME` | `http` | scheme used in the public URL sent to clients (`http` or `https`) |
+| `TUNNELPP_PUBLIC_PORT` | `0` | port used in the public URL sent to clients; `0` uses the bound `TUNNELPP_HTTP_PORT` |
 | `TUNNELPP_REQUEST_TIMEOUT` | `30` | seconds to wait for the client's response before answering `504` |
 
 The server refuses to start when `TUNNELPP_TOKEN` is missing or when a port is invalid.
@@ -30,13 +31,14 @@ docker run -p 8080:8080 \
 Or with the provided compose file:
 
 ```sh
-TUNNELPP_TOKEN=change-me TUNNELPP_DOMAIN=tunnel.example.com docker compose up --build
+TUNNELPP_TOKEN=change-me TUNNELPP_DOMAIN=tunnel.example.com docker compose up -d
 ```
 
-Build the image yourself:
+Build the image from a published release (the server binary is downloaded from the GitHub release of
+`VERSION`, not compiled from source):
 
 ```sh
-docker build -f server/Dockerfile -t tunnelpp-server .
+docker build --build-arg VERSION=1.2.3 -f server/Dockerfile -t tunnelpp-server .
 ```
 
 ## Reverse proxy
@@ -70,4 +72,5 @@ tunnel.example.com, *.tunnel.example.com {
 }
 ```
 
-With the proxy above, set `TUNNELPP_PUBLIC_SCHEME=https` so the URLs reported to clients use `https`.
+With the proxy above, set `TUNNELPP_PUBLIC_SCHEME=https` and `TUNNELPP_PUBLIC_PORT=443` so the URLs reported
+to clients use `https` without a port suffix.

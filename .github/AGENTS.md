@@ -58,9 +58,12 @@ Two phases:
   - Checks out the release tag `v{version}` (npm package version is synced by semantic-release's `build_command`)
   - Publishes `@theo-dep/tunnelpp` to GitHub Packages npm registry
 
-- **publish-docker** — only runs when `released == 'true'`
+- **publish-docker** — only runs when `released == 'true'`, after the `build` matrix
   - Checks out the release tag `v{version}`
   - QEMU + Buildx, multi-arch (`linux/amd64`, `linux/arm64`)
+  - The `server/Dockerfile` packages the release binary (downloaded from the GitHub release, matched to
+    `TARGETARCH`) instead of compiling: the glibc of the binary (built on Ubuntu 26.04) and the
+    `ubuntu:26.04` base image must stay aligned
   - Tags `ghcr.io/theo-dep/tunnelpp`: `{version}` always; `{major}.{minor}` and `latest` only on stable releases (not prereleases)
   - `provenance: false` + `sbom: false`: attestation manifests are pushed by digest without platform, GHCR lists them as untagged `unknown/unknown` entries
   - GHA cache (`cache-from`/`cache-to` type=gha, mode=max)
@@ -70,6 +73,10 @@ Two phases:
   - Release build with the `clang` preset (no sanitizers)
   - Packages as `.zip` (Windows) or `.tar.gz` (others)
   - Uploads binaries to the GitHub release created by semantic-release
+  - The supported platform list lives in 5 places that must stay in sync: this matrix (one base target
+    per platform-arch), `client/npm/scripts/install.js` (asset map), `docs/client.md`,
+    `client/npm/README.md` ("Supported platforms") and `server/Dockerfile` (linux x64/arm64 asset names).
+    Any change to one updates the four others.
 
 ## Semantic release configuration
 
@@ -80,7 +87,7 @@ Two phases:
   - `vcpkg.json` — `"version-string"`
   - `client/npm/package.json` — `"version"`
 - **Tag format**: `v{version}` (e.g. `v0.2.0`)
-- **Changelog**: auto-generated in `CHANGELOG.md`, release commits excluded
+- **Changelog**: auto-generated in `CHANGELOG.md`, release commits excluded; only release-triggering commits are listed (`feat`, `fix`, `perf`, and their breaking variants) — all other types (`ci`, `chore`, `build`, `docs`, etc.) are excluded via `changelog.exclude_commit_patterns`
 - **Commit parser**: conventional commits. `minor_tags = ["feat"]`, `patch_tags = ["fix", "perf"]`
 - **Zero version**: `allow_zero_version = true`, `major_on_zero = false` (0.x → minor bump on `feat`)
 - **Release commit message**: `chore(release): {version} [skip ci]` — the `[skip ci]` prevents re-triggering all workflows on the version-bump commit
@@ -139,7 +146,7 @@ All workflows follow the principle of least privilege:
 | CI build-test | `just test` |
 | CI lint | `just tidy <files>` (targeted lint) — full CI lint is `cmake --preset clang-lint && cmake --build build/clang-lint --parallel 1` |
 | Coverage | `just coverage` |
-| Docker build | `docker build -f server/Dockerfile .` |
+| Docker build | `docker build --build-arg VERSION=<released version> -f server/Dockerfile .` (the release must already be published) |
 | Docs build | `mkdocs build --strict` |
 | Release build | `just build-release` then package manually. For a real release: push a `feat:` or `fix:` commit to `main` — semantic-release handles versioning, changelog, tag, and GitHub release automatically. |
 | Semantic release (dry-run) | `pip install python-semantic-release && semantic-release version --print` (shows the next version without applying) |

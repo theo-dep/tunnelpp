@@ -27,6 +27,10 @@ https://my-app.tunnel.example.com
   → DNS: *.tunnel.example.com CNAME dyn.tunnel.example.com
   → DNS: dyn.tunnel.example.com A 203.0.113.10   (the box public IP)
   → box ports 80/443 → nginx (TLS) → tunnelpp-server:8080
+
+https://tunnel.example.com   (the WebSocket endpoint clients connect to)
+  → DNS: tunnel.example.com CNAME dyn.tunnel.example.com
+  → same chain
 ```
 
 When the public IP changes, the DynHost client updates `dyn.tunnel.example.com` and every tunnel subdomain follows through the CNAME. One DynHost entry to maintain.
@@ -36,14 +40,19 @@ When the public IP changes, the DynHost client updates `dyn.tunnel.example.com` 
 ```
 dyn.tunnel.example.com.    300    IN    A        203.0.113.10
 *.tunnel.example.com.      300    IN    CNAME    dyn.tunnel.example.com.
-tunnel.example.com.        300    IN    A        203.0.113.10
+tunnel.example.com.        300    IN    CNAME    dyn.tunnel.example.com.
 ```
 
 Notes:
 
 - The trailing dot after `dyn.tunnel.example.com` is required (FQDN target).
 - TTL 300 (5 min) so IP changes propagate quickly through the CNAME chain.
-- The apex (`tunnel.example.com`) stays an A record with its own DynHost entry: a CNAME cannot exist at the root of a zone.
+- `tunnel.example.com` is a regular subdomain of the zone, so it can be a CNAME (a CNAME is only forbidden at the root of a zone).
+- The bare `tunnel.example.com` needs its own record: a wildcard never covers the name itself (`*.tunnel.example.com` matches `my-app.tunnel.example.com`, never `tunnel.example.com`).
+- Do not rely on an outer wildcard of the parent domain (e.g. `*.example.com`) to resolve the bare name: every DNS-01 validation of the
+  `*.tunnel.example.com` certificate creates a TXT record at `_acme-challenge.tunnel.example.com`, and that child node makes
+  `tunnel.example.com` an existing (empty) name — wildcard synthesis stops applying to it (RFC 4592), and the WebSocket endpoint becomes
+  unreachable for as long as the challenge record exists. The explicit CNAME makes the name independent of wildcards.
 - Remove per-subdomain A records (e.g. `video.tunnel.example.com`) so they resolve through the wildcard CNAME instead of a stale static IP.
 
 ## DynHost (OVH manager)
@@ -68,17 +77,18 @@ Replace any wildcard entry with:
 | Username | the DynHost login created above |
 | Password | the DynHost password            |
 
-Keep one separate entry for the apex `tunnel.example.com` (a wildcard never covers the root domain).
+No entry for the bare `tunnel.example.com`: it follows `dyn.tunnel.example.com` through its CNAME.
 
 ## Server and reverse proxy
 
 The box forwards ports 80/443 to the host running nginx. The server and the proxy see the original `Host` header, so nothing changes:
 
 ```sh
-docker run -p 8080:8080 -p 127.0.0.1:8081:8081 \
+docker run -p 8080:8080 \
     -e TUNNELPP_DOMAIN=tunnel.example.com \
     -e TUNNELPP_TOKEN=change-me \
     -e TUNNELPP_PUBLIC_SCHEME=https \
+    -e TUNNELPP_PUBLIC_PORT=443 \
     ghcr.io/theo-dep/tunnelpp:latest
 ```
 
@@ -110,11 +120,61 @@ curl -sI https://my-app.tunnel.example.com             # → valid wildcard cert
 
 To prove the dynamic update works: set the `dyn.tunnel.example.com` A record to a bogus IP in the zone (text mode), wait for the next DynHost client update (or reboot the box to force it), and check that `dig` returns the real public IP again.
 
+## Troubleshooting
+
+DNS and certificate failures around the DNS-01 wildcard, and how to tell them apart.
+
+### The client cannot connect to `wss://tunnel.example.com`
+
+```sh
+dig tunnel.example.com A +noall +comments          # status: NOERROR, empty answer
+dig _acme-challenge.tunnel.example.com TXT         # a TXT record is still there
+```
+
+`NOERROR` with an empty answer means the name **exists** but carries no data: a leftover `_acme-challenge` TXT (a failed or interrupted certbot run leaves it behind) makes `tunnel.example.com` an
+existing empty node, which disables wildcard synthesis for it (RFC 4592). This is the symptom of relying on an outer wildcard instead of the explicit `tunnel.example.com` CNAME. The leftover TXT is
+harmless and can be deleted once certbot is done — with the explicit CNAME in place, the endpoint stays reachable even while the TXT exists.
+
+### Tunnel subdomains do not resolve
+
+```sh
+dig my-app.tunnel.example.com A +noall +comments   # status: NXDOMAIN
+dig '*.tunnel.example.com' CNAME +noall +answer     # no answer
+```
+
+`NXDOMAIN` means the name does not exist at all: the `*.tunnel.example.com` record is missing from the zone (add it in text mode, see above). `NXDOMAIN` on `*.tunnel.example.com` itself confirms it.
+
+### The browser still reports an insecure connection
+
+Check what certificate nginx actually serves, and what SANs the lineage has:
+
+```sh
+echo | openssl s_client -connect tunnel.example.com:443 -servername my-app.tunnel.example.com 2>/dev/null \
+    | openssl x509 -noout -ext subjectAltName
+sudo certbot certificates
+```
+
+- The lineage does not list `*.tunnel.example.com`: the issuance did not include it. Re-run `certbot certonly` with the full `-d` list; `--cert-name` **replaces** the SAN set with the given `-d` names.
+- The lineage lists it but nginx still serves the old certificate: the renewed `fullchain.pem`/`privkey.pem` were not copied to the directory nginx mounts, or nginx was not reloaded.
+
+Automate the copy and reload with a deploy hook, so renewals deploy themselves (also runs on every `certbot renew`):
+
+```sh
+sudo certbot certonly \
+    --cert-name tunnel.example.com \
+    -d tunnel.example.com -d '*.tunnel.example.com' \
+    --dns-ovh --dns-ovh-credentials /path/to/ovh-credentials \
+    --deploy-hook 'cp /etc/letsencrypt/live/tunnel.example.com/{fullchain.pem,privkey.pem} /path/to/nginx/certificates/tunnel.example.com/ \
+        && docker exec nginx nginx -s reload'
+```
+
+Wildcard SANs require DNS-01 (`--dns-ovh`): HTTP-01 cannot issue wildcards. Use `--dry-run` to rehearse an issuance.
+
 ## Final setup
 
 | Component      | Value                                                                                          |
 | -------------- | ---------------------------------------------------------------------------------------------- |
-| DNS zone       | `*.tunnel.example.com CNAME dyn.tunnel.example.com`, `dyn.tunnel.example.com A <ip>`, `tunnel.example.com A <ip>` |
+| DNS zone       | `*.tunnel.example.com CNAME dyn.tunnel.example.com`, `tunnel.example.com CNAME dyn.tunnel.example.com`, `dyn.tunnel.example.com A <ip>` |
 | DynHost        | 1 entry (`dyn.tunnel.example.com`)                                                             |
-| DynHost client | 2 entries (`dyn.tunnel.example.com` + apex `tunnel.example.com`)                               |
-| Server env     | `TUNNELPP_DOMAIN=tunnel.example.com`, `TUNNELPP_PUBLIC_SCHEME=https`                            |
+| DynHost client | 1 entry (`dyn.tunnel.example.com`)                                                            |
+| Server env     | `TUNNELPP_DOMAIN=tunnel.example.com`, `TUNNELPP_PUBLIC_SCHEME=https`, `TUNNELPP_PUBLIC_PORT=443` |
