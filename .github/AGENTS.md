@@ -62,8 +62,10 @@ Two phases:
   - Checks out the release tag `v{version}`
   - QEMU + Buildx, multi-arch (`linux/amd64`, `linux/arm64`)
   - The `server/Dockerfile` packages the release binary (downloaded from the GitHub release, matched to
-    `TARGETARCH`) instead of compiling: the glibc of the binary (built on Ubuntu 26.04) and the
-    `ubuntu:26.04` base image must stay aligned
+    `TARGETARCH`) instead of compiling. The packaged asset is the Ubuntu 26.04 build (`linux-x64` /
+    `linux-arm64`): the glibc of the binary (built on Ubuntu 26.04) and the `ubuntu:26.04` base image
+    must stay aligned, and the image is meant to run on Ubuntu 26.04 hosts — no cross-Ubuntu 24.04
+    asset is used
   - Tags `ghcr.io/theo-dep/tunnelpp`: `{version}` always; `{major}.{minor}` and `latest` only on stable releases (not prereleases)
   - `provenance: false` + `sbom: false`: attestation manifests are pushed by digest without platform, GHCR lists them as untagged `unknown/unknown` entries
   - GHA cache (`cache-from`/`cache-to` type=gha, mode=max)
@@ -71,6 +73,10 @@ Two phases:
 - **build** — 11-target matrix, only runs when `released == 'true'`
   - Checks out the release tag `v{version}`
   - Release build with the `clang` preset (no sanitizers)
+  - The `linux-x64` target sets `CXXFLAGS`/`CFLAGS` and `VCPKG_CXX_FLAGS`/`VCPKG_C_FLAGS` to
+    `-march=x86-64 -mtune=generic`: the Ubuntu 26.04 runner toolchain targets x86-64-v3 by default,
+    and the baseline keeps the published asset runnable on CPUs without AVX2.
+    The VCPKG flags change the vcpkg ABI hash, so stale v3 binaries are not reused from the NuGet cache
   - Packages as `.zip` (Windows) or `.tar.gz` (others)
   - Uploads binaries to the GitHub release created by semantic-release
   - The supported platform list lives in 5 places that must stay in sync: this matrix (one base target
