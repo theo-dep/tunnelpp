@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.1.0-alpha.5 (2026-11-05)
+
+### Bug Fixes
+
+- **vcpkg**: Set x64-linux overlay triplet to force x86-64 baseline
+  ([`12cd358`](https://github.com/theo-dep/tunnelpp/commit/12cd358b94c2548c7e3a458e2b46db7909740b01))
+
+
 ## v0.1.0-alpha.4 (2026-11-05)
 
 ### Bug Fixes

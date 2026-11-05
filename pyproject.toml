@@ -1,6 +1,6 @@
 [project]
 name = "tunnelpp"
-version = "0.1.0-alpha.4"
+version = "0.1.0-alpha.5"
 
 [tool.semantic_release]
 version_toml = ["pyproject.toml:project.version"]
