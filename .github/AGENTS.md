@@ -73,10 +73,17 @@ Two phases:
 - **build** — 11-target matrix, only runs when `released == 'true'`
   - Checks out the release tag `v{version}`
   - Release build with the `clang` preset (no sanitizers)
-  - The `linux-x64` target sets `CXXFLAGS`/`CFLAGS` and `VCPKG_CXX_FLAGS`/`VCPKG_C_FLAGS` to
-    `-march=x86-64 -mtune=generic`: the Ubuntu 26.04 runner toolchain targets x86-64-v3 by default,
-    and the baseline keeps the published asset runnable on CPUs without AVX2.
-    The VCPKG flags change the vcpkg ABI hash, so stale v3 binaries are not reused from the NuGet cache
+  - Linux x64 builds force the x86-64 baseline (the Ubuntu 26.04 toolchain targets x86-64-v3 by
+    default, which makes binaries refuse to start on CPUs without AVX2), in two places:
+    - project code: CMake option `TUNNELPP_X86_64_BASELINE` (OFF by default, ON in the `clang`
+      preset in CMakePresets.json) adds `-march=x86-64 -mtune=generic`; build without the preset
+      or with the option OFF to target v3
+    - vcpkg dependencies: overlay triplet `triplets/x64-linux.cmake` (same name as the builtin
+      `x64-linux`, resolved first via `VCPKG_OVERLAY_TRIPLETS`, set once in the `clang` preset and
+      forwarded to the vcpkg CLI by the toolchain) adds the same flags to `VCPKG_C_FLAGS`/
+      `VCPKG_CXX_FLAGS`. The flags live in the triplet (not in env vars) so they are part of the
+      vcpkg ABI hash: stale v3 binaries are never reused from the NuGet cache, and the first build
+      after adding the triplet recompiles all ports from source once. No workflow step is needed
   - Packages as `.zip` (Windows) or `.tar.gz` (others)
   - Uploads binaries to the GitHub release created by semantic-release
   - The supported platform list lives in 5 places that must stay in sync: this matrix (one base target

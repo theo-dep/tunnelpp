@@ -39,6 +39,7 @@ instructions.
 
 ## Code style
 
+- Comment only when the code does not speak for itself, and keep the comment as short and clear as possible.
 - `.h` / `.cpp` files, flat in each library directory. An implementation stays in a `.h` only when it fits on
   one line, anything longer goes in the matching `.cpp` (templates excepted).
 - Compiled with `-Wall -Wextra -Werror -pedantic`: no warning is acceptable.
