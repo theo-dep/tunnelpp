@@ -2,8 +2,7 @@
 
 # The image packages the release binary instead of compiling the server: the download URL
 # must match the asset names of the "build" matrix in .github/workflows/release.yml.
-# Base and assets are both ubuntu-26.04: the glibc the binary was linked against must not be
-# newer than the one in the base image.
+# Asset and base image are both ubuntu-26.04, so the glibc versions match.
 FROM ubuntu:26.04
 
 ARG DEBIAN_FRONTEND=noninteractive
