@@ -200,19 +200,6 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # The Ubuntu 26.04 runner toolchain targets x86-64-v3 by default: force the x86-64 baseline
-      # on the linux-x64 build so the published asset is not marked v3 and starts on CPUs without
-      # AVX2. CXXFLAGS/CFLAGS cover the project code (read by CMake at first configure), VCPKG_*_FLAGS
-      # cover the ports built from source and change the ABI hash, so stale v3 binaries from the
-      # NuGet cache are not reused.
-      - name: Force x86-64 baseline (linux-x64)
-        if: matrix.target == 'linux-x64'
-        run: |
-          echo "CXXFLAGS=-march=x86-64 -mtune=generic" >> "$GITHUB_ENV"
-          echo "CFLAGS=-march=x86-64 -mtune=generic" >> "$GITHUB_ENV"
-          echo "VCPKG_CXX_FLAGS=-march=x86-64 -mtune=generic" >> "$GITHUB_ENV"
-          echo "VCPKG_C_FLAGS=-march=x86-64 -mtune=generic" >> "$GITHUB_ENV"
-
       - name: Configure
         run: cmake --preset clang
 
