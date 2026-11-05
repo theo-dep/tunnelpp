@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.1.0-alpha.4 (2026-11-05)
+
+### Bug Fixes
+
+- **docker**: Use ubuntu-26.04 asset and x86-64 baseline for the server image
+  ([`c8459fd`](https://github.com/theo-dep/tunnelpp/commit/c8459fd998932ea8abc88ddfb1c382d974bf829c))
+
+
 ## v0.1.0-alpha.3 (2026-11-04)
 
 ### Features
