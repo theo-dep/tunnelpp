@@ -186,7 +186,12 @@ jobs:
 
       - name: Install Ninja and Clang (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y ninja-build clang zip
+        run: |
+          # The amd64v3 libc6-dev on ubuntu-26.04 runners marks every linked binary x86-64-v3 via
+          # its crt1.o note: pin the baseline amd64 variant and reinstall the toolchain from it.
+          echo 'APT::Architecture-Variants "amd64";' | sudo tee /etc/apt/apt.conf.d/99-amd64-baseline
+          sudo apt-get update
+          sudo apt-get install -y --allow-downgrades --reinstall ninja-build clang zip libc6-dev
 
       - name: Set up Clang (Windows)
         if: runner.os == 'Windows'
@@ -205,6 +210,29 @@ jobs:
 
       - name: Build
         run: cmake --build --preset clang-release
+
+      # Fail if a linux x64 asset is not x86-64 baseline: -march flags, ymm/zmm code, or a v2/v3
+      # GNU property note (glibc refuses to start such binaries on CPUs without AVX2).
+      - name: Check x86-64 baseline (linux x64)
+        if: matrix.target == 'linux-x64' || matrix.target == 'linux-x64-ubuntu24'
+        shell: bash
+        run: |
+          set -euo pipefail
+          march="$(jq -r '.[].command' build/clang/compile_commands.json | grep -o -- '-march=[^ "]*' | sort -u)"
+          echo "compile -march flags: ${march}"
+          [ "${march}" = "-march=x86-64" ]
+          if find build/clang -name '*.o' -path '*CMakeFiles*' -exec objdump -d {} + | grep -qE '%(y|z)mm'; then
+            echo "project objects contain AVX/AVX2 (ymm/zmm) instructions: not x86-64 baseline" >&2
+            exit 1
+          fi
+          for bin in build/clang/server/Release/tunnelpp-server build/clang/client/Release/tunnelpp-client; do
+            notes="$(readelf -nW "$bin")"
+            echo "$notes" | grep 'x86 ISA needed' || true
+            if echo "$notes" | grep -qE 'x86 ISA needed:.*x86-64-v[2-9]'; then
+              echo "$bin is marked for an ISA level above the x86-64 baseline" >&2
+              exit 1
+            fi
+          done
 
       # zip is not available in Git Bash on Windows runners (exit 127): use Compress-Archive
       - name: Package (Windows)

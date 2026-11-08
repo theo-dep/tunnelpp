@@ -62,10 +62,10 @@ Two phases:
   - Checks out the release tag `v{version}`
   - QEMU + Buildx, multi-arch (`linux/amd64`, `linux/arm64`)
   - The `server/Dockerfile` packages the release binary (downloaded from the GitHub release, matched to
-    `TARGETARCH`) instead of compiling. The packaged asset is the Ubuntu 26.04 build (`linux-x64` /
-    `linux-arm64`): the glibc of the binary (built on Ubuntu 26.04) and the `ubuntu:26.04` base image
-    must stay aligned, and the image is meant to run on Ubuntu 26.04 hosts — no cross-Ubuntu 24.04
-    asset is used
+    `TARGETARCH`) instead of compiling. The packaged assets are the Ubuntu 26.04 builds (`linux-x64` /
+    `linux-arm64`) on an `ubuntu:26.04` base image, so the glibc of the binary and of the base match.
+    The base image is x86-64 baseline (the amd64v3 variant is opt-in, not enabled); the packaged
+    binary is verified baseline by the check below
   - Tags `ghcr.io/theo-dep/tunnelpp`: `{version}` always; `{major}.{minor}` and `latest` only on stable releases (not prereleases)
   - `provenance: false` + `sbom: false`: attestation manifests are pushed by digest without platform, GHCR lists them as untagged `unknown/unknown` entries
   - GHA cache (`cache-from`/`cache-to` type=gha, mode=max)
@@ -83,7 +83,14 @@ Two phases:
       forwarded to the vcpkg CLI by the toolchain) adds the same flags to `VCPKG_C_FLAGS`/
       `VCPKG_CXX_FLAGS`. The flags live in the triplet (not in env vars) so they are part of the
       vcpkg ABI hash: stale v3 binaries are never reused from the NuGet cache, and the first build
-      after adding the triplet recompiles all ports from source once. No workflow step is needed
+      after adding the triplet recompiles all ports from source once
+  - On Linux, the job pins the baseline `amd64` apt variant before installing the toolchain: the
+    ubuntu-26.04 runner enables the `amd64v3` variant, whose `libc6-dev` marks every linked binary
+    x86-64-v3 via its `crt1.o` note (the linker merges GNU property notes)
+  - A `Check x86-64 baseline (linux x64)` step fails the linux x64 builds if a compile command drops
+    `-march=x86-64`, a project object contains ymm/zmm code, or a linked binary's GNU property note
+    (`readelf -nW`) requires more than the baseline — glibc refuses to start such binaries on CPUs
+    without AVX2 even when the code itself is baseline
   - Packages as `.zip` (Windows) or `.tar.gz` (others)
   - Uploads binaries to the GitHub release created by semantic-release
   - The supported platform list lives in 5 places that must stay in sync: this matrix (one base target
