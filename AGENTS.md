@@ -30,6 +30,7 @@ instructions.
 - Tests run in Debug with AddressSanitizer and UBSan (`just test`).
 - Never edit generated or vendored content: `build/`, `vcpkg_installed/`, `dist/`, `node_modules/`.
 - Do not add dependencies (`vcpkg.json`, `client/npm/package.json`) without asking.
+- Edit `package.json` files only through npm (`npm install`, `npm pkg ...`) and `vcpkg.json` only through the vcpkg CLI — never by hand.
 - Format only the files you changed (`just format <files>`), never the whole repository.
 - To lint C++, run `clang-tidy` directly with a compile-commands database, on the changed files only:
   `just tidy <files>` (uses `build/clang-lint`). Never run the full lint build locally, it is very slow.
