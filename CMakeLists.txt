@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.26)
-project(tunnelpp VERSION 0.1.0 LANGUAGES CXX)
+# Single source of truth for the version: version.txt (bumped by semantic-release)
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/version.txt" full_version)
+# A CMake project version has no prerelease component
+string(REGEX REPLACE "-.*$" "" cmake_version "${full_version}")
+project(tunnelpp VERSION "${cmake_version}" LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

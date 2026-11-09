@@ -49,23 +49,25 @@ Two jobs:
 Two phases:
 
 - **semantic-release** — runs on every push to `main`
-  - Installs `python-semantic-release` and analyzes commits since the last tag
-  - If `feat` or `fix` commits are found: bumps version in `pyproject.toml` and `CMakeLists.txt`, updates `CHANGELOG.md`, commits with `[skip ci]`, creates tag `v{version}`, pushes, and creates a GitHub release with the changelog
+  - Mints a GitHub App installation token (`actions/create-github-app-token@v3`, repo variable `APP_CLIENT_ID` + secret `APP_PRIVATE_KEY`): the release commit/tag push and the GitHub release are authenticated as the app bot (e.g. `semantic-release-bot[bot]`), a bypass actor of the `main` ruleset — no personal PAT
+  - Installs semantic-release from the root `package.json` (`npm ci`) and analyzes commits since the last tag (`release.config.js`)
+  - If `feat`, `fix` or `perf` commits are found: bumps the version in `version.txt` (`@semantic-release/exec`, the single source of truth), updates `CHANGELOG.md`, commits with `[skip ci]`, creates tag `v{version}`, pushes, and creates a GitHub release with the changelog
   - Outputs `released` (true/false) and `version` for downstream jobs
   - Version rules: `feat` → minor bump (0.x.y → 0.x+1.0), `fix`/`perf` → patch bump (0.x.y → 0.x.y+1). `chore`, `docs`, `ci`, etc. do not trigger a release.
 
 - **publish-npm** — only runs when `released == 'true'`
-  - Checks out the release tag `v{version}` (npm package version is synced by semantic-release's `build_command`)
+  - Checks out the release tag `v{version}`
+  - `client/npm/package.json` carries no version in the repo: the job sets it with `npm version --no-git-tag-version` before publishing (`client/npm/scripts/install.js` reads it to build the release asset URL)
   - Publishes `@theo-dep/tunnelpp` to GitHub Packages npm registry
 
 - **publish-docker** — only runs when `released == 'true'`, after the `build` matrix
   - Checks out the release tag `v{version}`
   - QEMU + Buildx, multi-arch (`linux/amd64`, `linux/arm64`)
   - The `server/Dockerfile` packages the release binary (downloaded from the GitHub release, matched to
-    `TARGETARCH`) instead of compiling. The packaged asset is the Ubuntu 26.04 build (`linux-x64` /
-    `linux-arm64`): the glibc of the binary (built on Ubuntu 26.04) and the `ubuntu:26.04` base image
-    must stay aligned, and the image is meant to run on Ubuntu 26.04 hosts — no cross-Ubuntu 24.04
-    asset is used
+    `TARGETARCH`) instead of compiling. The packaged assets are the Ubuntu 26.04 builds (`linux-x64` /
+    `linux-arm64`) on an `ubuntu:26.04` base image, so the glibc of the binary and of the base match.
+    The base image is x86-64 baseline (the amd64v3 variant is opt-in, not enabled); the packaged
+    binary is verified baseline by the check below
   - Tags `ghcr.io/theo-dep/tunnelpp`: `{version}` always; `{major}.{minor}` and `latest` only on stable releases (not prereleases)
   - `provenance: false` + `sbom: false`: attestation manifests are pushed by digest without platform, GHCR lists them as untagged `unknown/unknown` entries
   - GHA cache (`cache-from`/`cache-to` type=gha, mode=max)
@@ -83,7 +85,14 @@ Two phases:
       forwarded to the vcpkg CLI by the toolchain) adds the same flags to `VCPKG_C_FLAGS`/
       `VCPKG_CXX_FLAGS`. The flags live in the triplet (not in env vars) so they are part of the
       vcpkg ABI hash: stale v3 binaries are never reused from the NuGet cache, and the first build
-      after adding the triplet recompiles all ports from source once. No workflow step is needed
+      after adding the triplet recompiles all ports from source once
+  - On Linux, the job pins the baseline `amd64` apt variant before installing the toolchain: the
+    ubuntu-26.04 runner enables the `amd64v3` variant, whose `libc6-dev` marks every linked binary
+    x86-64-v3 via its `crt1.o` note (the linker merges GNU property notes)
+  - A `Check x86-64 baseline (linux x64)` step fails the linux x64 builds if a compile command drops
+    `-march=x86-64`, a project object contains ymm/zmm code, or a linked binary's GNU property note
+    (`readelf -nW`) requires more than the baseline — glibc refuses to start such binaries on CPUs
+    without AVX2 even when the code itself is baseline
   - Packages as `.zip` (Windows) or `.tar.gz` (others)
   - Uploads binaries to the GitHub release created by semantic-release
   - The supported platform list lives in 5 places that must stay in sync: this matrix (one base target
@@ -93,17 +102,41 @@ Two phases:
 
 ## Semantic release configuration
 
-`pyproject.toml` — `[tool.semantic_release]`:
+`release.config.js` (semantic-release, Node.js; plugins installed from the root `package.json` via `npm ci`):
 
-- **Version source**: `pyproject.toml:project.version` (canonical). `build_command` syncs the version to 3 other files:
-  - `CMakeLists.txt` — `project(tunnelpp VERSION ...)`
-  - `vcpkg.json` — `"version-string"`
-  - `client/npm/package.json` — `"version"`
+- **Version source of truth**: the git tag. The files below are kept in sync by the release commit
+- **Branches**: `main` is a prerelease branch (`prerelease: "alpha"` → versions `x.y.z-alpha.N`). `stable` is also declared because semantic-release requires at least one release branch; it must exist on the remote (`git push origin main:refs/heads/stable`) but is never pushed to — all releases are prereleases from `main`
 - **Tag format**: `v{version}` (e.g. `v0.2.0`)
-- **Changelog**: auto-generated in `CHANGELOG.md`, release commits excluded; only release-triggering commits are listed (`feat`, `fix`, `perf`, and their breaking variants) — all other types (`ci`, `chore`, `build`, `docs`, etc.) are excluded via `changelog.exclude_commit_patterns`
-- **Commit parser**: conventional commits. `minor_tags = ["feat"]`, `patch_tags = ["fix", "perf"]`
-- **Zero version**: `allow_zero_version = true`, `major_on_zero = false` (0.x → minor bump on `feat`)
-- **Release commit message**: `chore(release): {version} [skip ci]` — the `[skip ci]` prevents re-triggering all workflows on the version-bump commit
+- **Commit analyzer**: conventional commits; only `feat` (minor), `fix`/`perf` (patch) trigger a release
+- **Changelog**: `CHANGELOG.md`; only `feat`/`fix`/`perf` commits are listed, all other types are hidden
+- **Version source**: `version.txt` is the single source of truth, bumped by `@semantic-release/exec` (`echo "${nextRelease.version}" > version.txt`). `CMakeLists.txt` reads it at configure time and strips the prerelease suffix for `project(tunnelpp VERSION ...)`; `vcpkg.json` and `client/npm/package.json` carry no version in the repo (the `publish-npm` job sets the latter at publish time)
+- **Release commit**: `@semantic-release/git` commits `version.txt` + `CHANGELOG.md` with `chore(release): {version} [skip ci]` — the `[skip ci]` prevents re-triggering all workflows on the version-bump commit
+- **GitHub release**: `@semantic-release/github`
+
+### GitHub App (bot) authentication
+
+The release job uses no personal PAT. Create a GitHub App (e.g. `semantic-release-bot`) with
+**Contents: read/write** and **Metadata: read**, install it on the repo, add its
+`semantic-release-bot[bot]` account as a **bypass actor** of the `main` ruleset (and remove
+yourself from the bypass list). The client id is not secret: store it as the repo **variable**
+`APP_CLIENT_ID` (Settings → Variables → Repository variables); the private key goes in the repo
+**secret** `APP_PRIVATE_KEY`. The workflow mints an installation token with
+`actions/create-github-app-token@v3`, so the release commit, tag and GitHub release are authored
+by the bot.
+
+### One-time migration from python-semantic-release
+
+semantic-release links tags to branches through git notes (`refs/notes/semantic-release-*`).
+The existing tags were created by python-semantic-release and have no notes, so without them
+semantic-release would not find the last release and the next version would restart from
+`1.0.0-alpha.1` instead of `0.1.0-alpha.6`. Add the channel note to every existing tag once:
+
+```bash
+for t in $(git tag); do
+  git notes --ref refs/notes/semantic-release-main add -f -m '{"channels":["main"]}' "$t^{commit}"
+done
+git push origin 'refs/notes/semantic-release-*'
+```
 
 ## Dependabot
 
@@ -112,6 +145,7 @@ Two phases:
 | Ecosystem | Directory | Schedule | Commit prefix | Release? |
 |---|---|---|---|---|
 | `github-actions` | `/` | weekly | `chore(deps)` | no |
+| `npm` | `/` (semantic-release tooling) | weekly | `chore(deps)` | no |
 | `npm` | `/client/npm` | weekly | `chore(deps)` | no |
 | `vcpkg` | `/` | weekly | `fix(deps)` | **yes** (patch bump) |
 | `docker` | `/server` | weekly | `chore(deps)` | no |
@@ -148,7 +182,7 @@ All workflows follow the principle of least privilege:
 - **Path filters.** `docs.yml` uses path filters to avoid running unnecessarily. Add or modify them carefully. The Docker image is published only on releases (`release.yml`), never on plain pushes to `main`.
 - **Naming conventions.** Job names use the format `name (${{ matrix.os }})` or `name (${{ matrix.target }})` when a matrix is involved.
 - **Dependabot**: do not change the schedule (weekly is a good compromise). Add a new ecosystem only if the project adopts a new dependency manager.
-- **Semantic release**: never create version tags manually. Push conventional commits to `main` (`feat:` for minor, `fix:` for patch) and let `python-semantic-release` handle the rest. The version in `pyproject.toml`, `CMakeLists.txt`, `vcpkg.json` and `client/npm/package.json` is managed automatically — do not edit it by hand.
+- **Semantic release**: never create version tags manually. Push conventional commits to `main` (`feat:` for minor, `fix:` for patch) and let `semantic-release` handle the rest. The version in `version.txt` is managed automatically (CMake reads it at configure time) — do not edit it by hand. `client/npm/package.json` has no `version` field on purpose: it is set at publish time.
 - **Conventional commits are required.** Commit messages must follow the conventional commits spec: `type(scope): description`. Types that trigger a release: `feat` (minor), `fix`/`perf` (patch). All other types (`chore`, `docs`, `ci`, `refactor`, etc.) do not trigger a release.
 - **`[skip ci]` on release commits.** The semantic-release commit message includes `[skip ci]` to prevent re-triggering workflows. Do not remove it.
 
@@ -162,4 +196,4 @@ All workflows follow the principle of least privilege:
 | Docker build | `docker build --build-arg VERSION=<released version> -f server/Dockerfile .` (the release must already be published) |
 | Docs build | `mkdocs build --strict` |
 | Release build | `just build-release` then package manually. For a real release: push a `feat:` or `fix:` commit to `main` — semantic-release handles versioning, changelog, tag, and GitHub release automatically. |
-| Semantic release (dry-run) | `pip install python-semantic-release && semantic-release version --print` (shows the next version without applying) |
+| Semantic release (dry-run) | `npm ci && npx semantic-release --dry-run` (shows the next version without applying) |
