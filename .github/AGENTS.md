@@ -110,8 +110,14 @@ Two phases:
 - **Commit analyzer**: conventional commits; only `feat` (minor), `fix`/`perf` (patch) trigger a release
 - **Changelog**: `CHANGELOG.md`; only `feat`/`fix`/`perf` commits are listed, all other types are hidden
 - **Version source**: `version.txt` is the single source of truth, bumped by `@semantic-release/exec` (`echo "${nextRelease.version}" > version.txt`). `CMakeLists.txt` reads it at configure time and strips the prerelease suffix for `project(tunnelpp VERSION ...)`; `vcpkg.json` and `client/npm/package.json` carry no version in the repo (the `publish-npm` job sets the latter at publish time)
-- **Release commit**: `@semantic-release/git` commits `version.txt` + `CHANGELOG.md` with `chore(release): {version} [skip ci]` — the `[skip ci]` prevents re-triggering all workflows on the version-bump commit
+- **Release commit**: `@semantic-release/git` commits `version.txt` + `CHANGELOG.md` with `chore(release): ${nextRelease.version} [skip ci]` — the `[skip ci]` prevents re-triggering all workflows on the version-bump commit
 - **GitHub release**: `@semantic-release/github`
+
+Pitfalls (each one has broken CI once):
+
+- Plugin templates receive `{ branch, lastRelease, nextRelease }` — use `${nextRelease.version}`, never `${version}` (the `@semantic-release/git` commit message crashes with `ReferenceError: version is not defined` otherwise)
+- `conventional-changelog-conventionalcommits` must stay on v9 (`^9.3.1`): v10 requires `conventional-changelog-writer@9`, but `@semantic-release/changelog@7` / `release-notes-generator@14` ship writer@8 (handlebars `helper-missing` crash when rendering notes)
+- `--dry-run` skips `prepare`/`publish`, so it does not exercise the plugins' write steps: before changing `release.config.js`, test each plugin step (`exec`, `git`, `changelog`, `npm`) individually in a scratch clone, and run the full `--dry-run` for the version calculation
 
 ### GitHub App (bot) authentication
 
