@@ -1,7 +1,3 @@
-# CHANGELOG
-
-<!-- version list -->
-
 ## v0.1.0-alpha.5 (2026-11-05)
 
 ### Bug Fixes

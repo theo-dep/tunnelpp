@@ -3,7 +3,8 @@
   "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
   "files.associations": {
     "Justfile": "makefile",
-    ".github/AGENTS.md": "markdown"
+    "**/.github/**/*.md": "markdown",
+    "**/.github/**/*.sh": "shellscript"
   },
   "C_Cpp.intelliSenseEngine": "disabled",
   "C_Cpp.default.compileCommands": ["${workspaceFolder}/build/clang/compile_commands.json"],

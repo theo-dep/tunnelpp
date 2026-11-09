@@ -71,4 +71,4 @@ instructions.
   - `fix`: bug fix → patch version bump
   - `perf`: performance improvement → patch version bump
   - `chore`, `docs`, `ci`, `refactor`, `style`, `test`, `build`, `revert`: no version bump
-- Releases are automated: push to `main` triggers `python-semantic-release` (see `.github/AGENTS.md`). Never create version tags manually.
+- Releases are automated: push to `main` triggers `semantic-release` (see `.github/AGENTS.md`). Never create version tags manually.

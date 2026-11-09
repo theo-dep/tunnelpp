@@ -24,38 +24,43 @@ jobs:
       released: ${{ steps.sr.outputs.released }}
       version: ${{ steps.sr.outputs.version }}
     steps:
-      # Checkout with the PAT: the persisted git credential (http extraheader) takes
-      # precedence over the token embedded in semantic-release's push URL. Without this,
-      # the release commit is pushed as github-actions[bot] (GITHUB_TOKEN) and rejected
-      # by the `main` ruleset (GH013). With the PAT, the push is authenticated as its
-      # owner, a bypass actor of the ruleset.
+      # GitHub App token: the release commit/tag push and the GitHub release are
+      # authenticated as the app bot (e.g. semantic-release-bot[bot]), which must be a
+      # bypass actor of the `main` ruleset — no personal PAT (RELEASE_PAT) involved.
+      - uses: actions/create-github-app-token@v3
+        id: app-token
+        with:
+          client-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          permission-contents: write
+
+      # Checkout with the app token: the persisted git credential (http extraheader) is
+      # used by semantic-release's push, so the release commit is pushed as the bot.
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          token: ${{ secrets.RELEASE_PAT }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Set git config
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "semantic-release-bot[bot]"
+          git config user.email "semantic-release-bot[bot]@users.noreply.github.com"
 
-      - name: Set up Python
-        uses: actions/setup-python@v7
+      - uses: actions/setup-node@v7
         with:
-          python-version: "3.x"
+          node-version: "22"
 
-      - name: Install python-semantic-release
-        run: pip install python-semantic-release
+      - name: Install semantic-release
+        run: npm ci
 
       - name: Semantic release
         id: sr
-        # RELEASE_PAT: fine-grained PAT (Contents read/write, this repo only). Its owner is a
-        # bypass actor of the `main` ruleset, so the release commit can bypass the PR rule.
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           before=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
-          semantic-release version
+          npx semantic-release
           after=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
           if [ "$before" != "$after" ]; then
             echo "released=true" >> "$GITHUB_OUTPUT"
@@ -80,7 +85,14 @@ jobs:
           node-version: "22"
           registry-url: "https://npm.pkg.github.com/"
 
-      # version in client/npm/package.json is synced by semantic-release's build_command.
+      # client/npm/package.json has no version in the repo (single source of truth: version.txt,
+      # bumped by semantic-release in the release commit). Set it here:
+      # client/npm/scripts/install.js reads it to build the release asset URL (v{version}).
+      - name: Set client package version
+        env:
+          VERSION: ${{ needs.semantic-release.outputs.version }}
+        run: npm version --no-git-tag-version "$VERSION" --prefix client/npm
+
       # The ./ prefix is required: without it npm treats "client/npm" as a GitHub
       # user/repo shorthand (git ls-remote ssh://git@github.com/client/npm.git, exit 128)
       - name: Publish @theo-dep/tunnelpp to GitHub Packages
