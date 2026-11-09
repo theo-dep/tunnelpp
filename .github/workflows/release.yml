@@ -29,7 +29,7 @@ jobs:
       # the release commit is pushed as github-actions[bot] (GITHUB_TOKEN) and rejected
       # by the `main` ruleset (GH013). With the PAT, the push is authenticated as its
       # owner, a bypass actor of the ruleset.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_PAT }}
@@ -70,7 +70,7 @@ jobs:
     if: needs.semantic-release.outputs.released == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: v${{ needs.semantic-release.outputs.version }}
 
@@ -100,7 +100,7 @@ jobs:
     if: needs.semantic-release.outputs.released == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: v${{ needs.semantic-release.outputs.version }}
 
@@ -180,7 +180,7 @@ jobs:
           # Windows — Server 2022 (OS-1)
           - { os: windows-2022, target: win32-x64-win2022 }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: v${{ needs.semantic-release.outputs.version }}
 
