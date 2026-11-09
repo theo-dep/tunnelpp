@@ -1,3 +1,9 @@
+## [0.1.0-alpha.6](https://github.com/theo-dep/tunnelpp/compare/v0.1.0-alpha.5...v0.1.0-alpha.6) (2026-11-09)
+
+### Bug Fixes
+
+* **ci:** keep linux x64 release binaries on the x86-64 baseline ([470ac9c](https://github.com/theo-dep/tunnelpp/commit/470ac9c5d5ada719dc94d7c4813ddd248d529090))
+
 ## v0.1.0-alpha.5 (2026-11-05)
 
 ### Bug Fixes
