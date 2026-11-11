@@ -33,6 +33,9 @@ jobs:
           client-id: ${{ vars.APP_CLIENT_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           permission-contents: write
+          # @semantic-release/github comments on the PRs/issues included in the release
+          permission-pull-requests: write
+          permission-issues: write
 
       # Checkout with the app token: the persisted git credential (http extraheader) is
       # used by semantic-release's push, so the release commit is pushed as the bot.
@@ -246,16 +249,25 @@ jobs:
             fi
           done
 
-      # zip is not available in Git Bash on Windows runners (exit 127): use Compress-Archive
+      # zip is not available in Git Bash on Windows runners (exit 127): use Compress-Archive.
+      # The win32 build links vcpkg dynamically: the zip must also contain the runtime DLLs
+      # (spdlog/fmt/OpenSSL) next to the exe, otherwise the binary crashes at startup on
+      # machines without vcpkg installed (issue #27).
       - name: Package (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         env:
           TARGET: ${{ matrix.target }}
         run: |
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Compress-Archive -Path build/clang/client/Release/tunnelpp-client.exe -DestinationPath "dist/tunnelpp-client-$env:TARGET.zip"
-          Compress-Archive -Path build/clang/server/Release/tunnelpp-server.exe -DestinationPath "dist/tunnelpp-server-$env:TARGET.zip"
+          $ErrorActionPreference = 'Stop'
+          foreach ($exe in 'client/tunnelpp-client.exe', 'server/tunnelpp-server.exe') {
+            $base = (Split-Path $exe -Leaf) -replace '\.exe$', ''
+            New-Item -ItemType Directory -Force -Path dist/staging | Out-Null
+            Copy-Item "build/clang/$exe" -Destination dist/staging/
+            Copy-Item build/clang/vcpkg_installed/*/bin/*.dll -Destination dist/staging/
+            Compress-Archive -Path dist/staging/* -DestinationPath "dist/$base-$env:TARGET.zip"
+            Remove-Item -Recurse -Force dist/staging
+          }
 
       - name: Package (Linux/macOS)
         if: runner.os != 'Windows'

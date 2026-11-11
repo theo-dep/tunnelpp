@@ -11,6 +11,7 @@ workflows, composite actions, Dependabot configuration.
 | Coverage | `workflows/coverage.yml` | push to `main`, manual | LLVM coverage report (artifact) |
 | Docs | `workflows/docs.yml` | push to `main` (path-filtered), manual | Build MkDocs and deploy GitHub Pages |
 | Release | `workflows/release.yml` | push to `main` | Semantic-release (conventional commits): binaries, npm package, Docker image |
+| CodeQL | `workflows/codeql.yml` | push/PR to `main`, weekly | Code scanning (C++, JavaScript/TypeScript) |
 
 ## Workflows in detail
 
@@ -93,19 +94,27 @@ Two phases:
     `-march=x86-64`, a project object contains ymm/zmm code, or a linked binary's GNU property note
     (`readelf -nW`) requires more than the baseline — glibc refuses to start such binaries on CPUs
     without AVX2 even when the code itself is baseline
-  - Packages as `.zip` (Windows) or `.tar.gz` (others)
+  - Packages as `.zip` (Windows, exe + the vcpkg runtime DLLs from `build/clang/vcpkg_installed/*/bin/`,
+    required at runtime — the win32 build links vcpkg dynamically) or `.tar.gz` (others)
   - Uploads binaries to the GitHub release created by semantic-release
   - The supported platform list lives in 5 places that must stay in sync: this matrix (one base target
     per platform-arch), `client/npm/scripts/install.js` (asset map), `docs/client.md`,
     `client/npm/README.md` ("Supported platforms") and `server/Dockerfile` (linux x64/arm64 asset names).
     Any change to one updates the four others.
 
+### CodeQL (`codeql.yml`)
+
+- Triggered on push/PR to `main` and weekly (cron), per GitHub's template
+- Matrix over two languages, `fail-fast: false`:
+  - `c-cpp` with `build-mode: manual`: autobuild cannot work (the CMake configure needs vcpkg), so the job installs Ninja + Clang, sets up vcpkg (mandatory binary cache) and builds with the `clang` preset (`cmake --preset clang`, `cmake --build --preset clang-debug`) after `codeql-action/init` so the compilation is intercepted
+  - `javascript-typescript` with `build-mode: none`: no build step (`client/npm/` wrapper, `release.config.js`)
+
 ## Semantic release configuration
 
 `release.config.js` (semantic-release, Node.js; plugins installed from the root `package.json` via `npm ci`):
 
 - **Version source of truth**: the git tag. The files below are kept in sync by the release commit
-- **Branches**: `main` is a prerelease branch (`prerelease: "alpha"` → versions `x.y.z-alpha.N`). `stable` is also declared because semantic-release requires at least one release branch; it must exist on the remote (`git push origin main:refs/heads/stable`) but is never pushed to — all releases are prereleases from `main`
+- **Branches**: `main` is a prerelease branch (`prerelease: "alpha"` → versions `x.y.z-alpha.N`). `stable` is also declared because semantic-release requires at least one release branch; it must exist on the remote but is never pushed to — all releases are prereleases from `main`. If `stable` ever disappears (e.g. branch cleanup), recreate it with `git push origin origin/main:refs/heads/stable` — otherwise the release job fails with `ERELEASEBRANCHES`
 - **Tag format**: `v{version}` (e.g. `v0.2.0`)
 - **Commit analyzer**: conventional commits; only `feat` (minor), `fix`/`perf` (patch) trigger a release
 - **Changelog**: `CHANGELOG.md`; only `feat`/`fix`/`perf` commits are listed, all other types are hidden
@@ -122,7 +131,10 @@ Pitfalls (each one has broken CI once):
 ### GitHub App (bot) authentication
 
 The release job uses no personal PAT. Create a GitHub App (e.g. `semantic-release-bot`) with
-**Contents: read/write** and **Metadata: read**, install it on the repo, add its
+**Contents: read/write**, **Pull requests: write**, **Issues: write** and **Metadata: read** (the
+PR/Issues write permissions are needed because `@semantic-release/github` comments on the PRs and
+issues included in each release — without them the job logs `Not allowed to add a comment to the
+issue/PR` for each of them), install it on the repo, add its
 `semantic-release-bot[bot]` account as a **bypass actor** of the `main` ruleset (and remove
 yourself from the bypass list). The client id is not secret: store it as the repo **variable**
 `APP_CLIENT_ID` (Settings → Variables → Repository variables); the private key goes in the repo
@@ -176,6 +188,7 @@ vcpkg uses `fix(deps)` because C++ dependency updates often include security fix
 All workflows follow the principle of least privilege:
 
 - `ci.yml`, `coverage.yml`: `contents: read` + `packages: write` (for the vcpkg binary cache on GitHub Packages)
+- `codeql.yml`: `contents: read` + `packages: write` (CodeQL query packs + vcpkg binary cache) + `security-events: write` (SARIF upload to code scanning)
 - `release.yml`: `contents: write` (semantic-release pushes commits/tags, creates releases) + `packages: write` (vcpkg binary cache, npm registry, GHCR push)
 - `docs.yml`: `contents: read` + `pages: write` + `id-token: write` (Pages deployment)
 

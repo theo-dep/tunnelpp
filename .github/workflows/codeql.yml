@@ -1,0 +1,72 @@
+name: "CodeQL Advanced"
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    - cron: '35 1 * * 0'
+
+env:
+  VCPKG_ROOT: ${{ github.workspace }}/.vcpkg
+  VCPKG_EXE: ${{ github.workspace }}/.vcpkg/vcpkg
+  VCPKG_NUGET_FEED_URL: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      # required to upload SARIF results to code scanning
+      security-events: write
+      # read: CodeQL query packs; write: vcpkg binary cache (NuGet feed on GitHub Packages)
+      packages: write
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Compiled language: autobuild cannot work (the configure needs vcpkg),
+          # so build-mode is manual and the steps below compile the code
+          - language: c-cpp
+            build-mode: manual
+          # Interpreted language: no build needed (client/npm wrapper, release.config.js)
+          - language: javascript-typescript
+            build-mode: none
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      # Setup steps must run before codeql-action/init so the build is intercepted
+      - name: Install Ninja and Clang
+        if: matrix.language == 'c-cpp'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build clang
+
+      - name: Set up vcpkg (NuGet binary cache)
+        if: matrix.language == 'c-cpp'
+        uses: ./.github/actions/setup-vcpkg
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      - name: Configure
+        if: matrix.build-mode == 'manual'
+        run: cmake --preset clang
+
+      - name: Build
+        if: matrix.build-mode == 'manual'
+        run: cmake --build --preset clang-debug
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"
+

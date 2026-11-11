@@ -6,3 +6,4 @@ coverage/
 site/
 CMakeUserPresets.json
 *.log
+client/npm/vendor/
