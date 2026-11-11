@@ -51,6 +51,23 @@ jobs:
       - name: Test
         run: ctest --preset clang-test-debug --output-on-failure
 
+  npm-wrapper:
+    name: npm-wrapper (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+
+      - name: Test install script
+        run: node --test "client/npm/test/*.test.js"
+
   lint:
     name: lint (clang-tidy)
     runs-on: ubuntu-latest
