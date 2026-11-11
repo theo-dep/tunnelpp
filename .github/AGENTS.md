@@ -11,6 +11,7 @@ workflows, composite actions, Dependabot configuration.
 | Coverage | `workflows/coverage.yml` | push to `main`, manual | LLVM coverage report (artifact) |
 | Docs | `workflows/docs.yml` | push to `main` (path-filtered), manual | Build MkDocs and deploy GitHub Pages |
 | Release | `workflows/release.yml` | push to `main` | Semantic-release (conventional commits): binaries, npm package, Docker image |
+| CodeQL | `workflows/codeql.yml` | push/PR to `main`, weekly | Code scanning (C++, JavaScript/TypeScript) |
 
 ## Workflows in detail
 
@@ -100,6 +101,13 @@ Two phases:
     `client/npm/README.md` ("Supported platforms") and `server/Dockerfile` (linux x64/arm64 asset names).
     Any change to one updates the four others.
 
+### CodeQL (`codeql.yml`)
+
+- Triggered on push/PR to `main` and weekly (cron), per GitHub's template
+- Matrix over two languages, `fail-fast: false`:
+  - `c-cpp` with `build-mode: manual`: autobuild cannot work (the CMake configure needs vcpkg), so the job installs Ninja + Clang, sets up vcpkg (mandatory binary cache) and builds with the `clang` preset (`cmake --preset clang`, `cmake --build --preset clang-debug`) after `codeql-action/init` so the compilation is intercepted
+  - `javascript-typescript` with `build-mode: none`: no build step (`client/npm/` wrapper, `release.config.js`)
+
 ## Semantic release configuration
 
 `release.config.js` (semantic-release, Node.js; plugins installed from the root `package.json` via `npm ci`):
@@ -179,6 +187,7 @@ vcpkg uses `fix(deps)` because C++ dependency updates often include security fix
 All workflows follow the principle of least privilege:
 
 - `ci.yml`, `coverage.yml`: `contents: read` + `packages: write` (for the vcpkg binary cache on GitHub Packages)
+- `codeql.yml`: `contents: read` + `packages: write` (CodeQL query packs + vcpkg binary cache) + `security-events: write` (SARIF upload to code scanning)
 - `release.yml`: `contents: write` (semantic-release pushes commits/tags, creates releases) + `packages: write` (vcpkg binary cache, npm registry, GHCR push)
 - `docs.yml`: `contents: read` + `pages: write` + `id-token: write` (Pages deployment)
 
