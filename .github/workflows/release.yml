@@ -33,6 +33,9 @@ jobs:
           client-id: ${{ vars.APP_CLIENT_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           permission-contents: write
+          # @semantic-release/github comments on the PRs/issues included in the release
+          permission-pull-requests: write
+          permission-issues: write
 
       # Checkout with the app token: the persisted git credential (http extraheader) is
       # used by semantic-release's push, so the release commit is pushed as the bot.

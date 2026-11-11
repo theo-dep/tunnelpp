@@ -105,7 +105,7 @@ Two phases:
 `release.config.js` (semantic-release, Node.js; plugins installed from the root `package.json` via `npm ci`):
 
 - **Version source of truth**: the git tag. The files below are kept in sync by the release commit
-- **Branches**: `main` is a prerelease branch (`prerelease: "alpha"` → versions `x.y.z-alpha.N`). `stable` is also declared because semantic-release requires at least one release branch; it must exist on the remote (`git push origin main:refs/heads/stable`) but is never pushed to — all releases are prereleases from `main`
+- **Branches**: `main` is a prerelease branch (`prerelease: "alpha"` → versions `x.y.z-alpha.N`). `stable` is also declared because semantic-release requires at least one release branch; it must exist on the remote but is never pushed to — all releases are prereleases from `main`. If `stable` ever disappears (e.g. branch cleanup), recreate it with `git push origin origin/main:refs/heads/stable` — otherwise the release job fails with `ERELEASEBRANCHES`
 - **Tag format**: `v{version}` (e.g. `v0.2.0`)
 - **Commit analyzer**: conventional commits; only `feat` (minor), `fix`/`perf` (patch) trigger a release
 - **Changelog**: `CHANGELOG.md`; only `feat`/`fix`/`perf` commits are listed, all other types are hidden
@@ -122,7 +122,10 @@ Pitfalls (each one has broken CI once):
 ### GitHub App (bot) authentication
 
 The release job uses no personal PAT. Create a GitHub App (e.g. `semantic-release-bot`) with
-**Contents: read/write** and **Metadata: read**, install it on the repo, add its
+**Contents: read/write**, **Pull requests: write**, **Issues: write** and **Metadata: read** (the
+PR/Issues write permissions are needed because `@semantic-release/github` comments on the PRs and
+issues included in each release — without them the job logs `Not allowed to add a comment to the
+issue/PR` for each of them), install it on the repo, add its
 `semantic-release-bot[bot]` account as a **bypass actor** of the `main` ruleset (and remove
 yourself from the bypass list). The client id is not secret: store it as the repo **variable**
 `APP_CLIENT_ID` (Settings → Variables → Repository variables); the private key goes in the repo
