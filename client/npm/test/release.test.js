@@ -37,8 +37,12 @@ test("release workflow still packages assets with the expected naming scheme", (
     path.join(repoRoot, ".github", "workflows", "release.yml"),
     "utf8",
   );
-  // dist/tunnelpp-client-$env:TARGET.zip on Windows, dist/tunnelpp-client-$TARGET.tar.gz elsewhere
-  assert.match(releaseYml, /tunnelpp-client-\$env:TARGET\.zip/);
+  // Windows: dist/<exe-base>-$env:TARGET.zip staging the exe + vcpkg runtime DLLs,
+  // for BOTH the client and the server; elsewhere: dist/tunnelpp-client-$TARGET.tar.gz
+  assert.match(releaseYml, /client\/tunnelpp-client\.exe/);
+  assert.match(releaseYml, /server\/tunnelpp-server\.exe/);
+  assert.match(releaseYml, /-\$env:TARGET\.zip/);
+  assert.match(releaseYml, /vcpkg_installed\/\*\/bin\/\*\.dll/);
   assert.match(releaseYml, /tunnelpp-client-\$TARGET\.tar\.gz/);
 });
 

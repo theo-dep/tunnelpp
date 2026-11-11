@@ -69,4 +69,5 @@ by the client.
 
 Download a binary directly from the
 [releases](https://github.com/theo-dep/tunnelpp/releases) page: `tunnelpp-client-<platform>-<arch>.tar.gz`
-(`.zip` on Windows).
+(`.zip` on Windows). The Windows zip also contains the runtime DLLs (spdlog/fmt/OpenSSL, linked
+dynamically from vcpkg) — keep them in the same directory as the `.exe`, otherwise it will not start.

@@ -78,9 +78,27 @@ test(
         assert.notEqual(fs.statSync(binaryPath).mode & 0o111, 0, "binary must be executable");
       }
 
-      // the installed CLI runs the downloaded binary
-      const help = run(process.execPath, [path.join(installed, "bin", "tunnelpp-client.js"), "--help"]);
-      assert.match(help.stdout, /--server/);
+      // the installed CLI runs the downloaded binary. On win32 the release asset must also
+      // ship the vcpkg runtime DLLs (release.yml packaging, issue #27): assets published before
+      // that fix crash at startup (0xC0000005), so only execute the exe when the DLLs are there.
+      const vendorFiles = fs.readdirSync(path.join(installed, "vendor"));
+      const dlls = vendorFiles.filter((f) => f.endsWith(".dll"));
+      const head = [...fs.readFileSync(binaryPath).subarray(0, 2)];
+      if (process.platform === "win32") {
+        assert.deepEqual(head, [0x4d, 0x5a], "win32 binary must be a PE (MZ)");
+      }
+      if (process.platform !== "win32" || dlls.some((d) => /^(libssl|libcrypto|spdlog|fmt)/i.test(d))) {
+        const help = run(process.execPath, [
+          path.join(installed, "bin", "tunnelpp-client.js"),
+          "--help",
+        ]);
+        assert.match(help.stdout, /--server/);
+      } else {
+        console.log(
+          `skip --help on win32: release asset v${version} ships no runtime DLLs ` +
+            "(published before the release.yml packaging fix)",
+        );
+      }
 
       // the installed JS API is usable
       const api = require(installed);

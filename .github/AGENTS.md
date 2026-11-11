@@ -94,7 +94,8 @@ Two phases:
     `-march=x86-64`, a project object contains ymm/zmm code, or a linked binary's GNU property note
     (`readelf -nW`) requires more than the baseline — glibc refuses to start such binaries on CPUs
     without AVX2 even when the code itself is baseline
-  - Packages as `.zip` (Windows) or `.tar.gz` (others)
+  - Packages as `.zip` (Windows, exe + the vcpkg runtime DLLs from `build/clang/vcpkg_installed/*/bin/`,
+    required at runtime — the win32 build links vcpkg dynamically) or `.tar.gz` (others)
   - Uploads binaries to the GitHub release created by semantic-release
   - The supported platform list lives in 5 places that must stay in sync: this matrix (one base target
     per platform-arch), `client/npm/scripts/install.js` (asset map), `docs/client.md`,

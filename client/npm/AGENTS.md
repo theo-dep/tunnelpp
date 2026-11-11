@@ -26,7 +26,10 @@
   - `npm-install.test.js`: end-to-end, needs network — `npm pack` a copy of the package (with
     `version.txt` as version, `vendor/` excluded), `npm install` the tarball into a scratch
     consumer project, then run the installed CLI (`--help`) and JS API. Runs the real `install`
-    lifecycle script, i.e. the exact flow of issue #27
+    lifecycle script, i.e. the exact flow of issue #27. On win32 the `--help` run is conditional:
+    the exe only executes if the downloaded asset ships the vcpkg runtime DLLs (assets published
+    before the `release.yml` packaging fix crash at startup); the DLL packaging itself is pinned
+    statically by `release.test.js`
   - `api.test.js`: `startTunnel` arg validation/spawn, `bin/` wrapper exit codes
   - `package.test.js`: package.json sanity (bin/main/files exist, no version in the repo)
 
