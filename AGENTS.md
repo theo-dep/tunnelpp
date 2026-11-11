@@ -14,6 +14,7 @@ instructions.
 | `common/` | Static library shared by server and client     | `common/AGENTS.md` |
 | `server/` | Tunnel server (binary + Docker image)          | `server/AGENTS.md` |
 | `client/` | Tunnel client CLI + npm wrapper                | `client/AGENTS.md` |
+| `client/npm/` | npm package `@theo-dep/tunnelpp`           | `client/npm/AGENTS.md` |
 | `tests/`  | End-to-end tests (server + client + local echo) | this file        |
 | `docs/`   | Documentation (MkDocs, GitHub Pages)           | this file        |
 | `.github/` | CI/CD workflows, actions, Dependabot          | `.github/AGENTS.md` |

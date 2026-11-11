@@ -149,7 +149,7 @@ function download(url, dest, redirects) {
   });
 }
 
-async function main() {
+async function main(options = {}) {
   const key = `${process.platform}-${process.arch}`;
   const asset = assets[key];
   if (!asset) {
@@ -157,7 +157,7 @@ async function main() {
   }
   const repo = process.env.TUNNELPP_REPO || "theo-dep/tunnelpp";
   const url = `https://github.com/${repo}/releases/download/v${pkg.version}/${asset}`;
-  const vendorDir = path.join(__dirname, "..", "vendor");
+  const vendorDir = options.vendorDir || path.join(__dirname, "..", "vendor");
   const archivePath = path.join(vendorDir, asset);
   const binaryName =
     process.platform === "win32" ? "tunnelpp-client.exe" : "tunnelpp-client";
@@ -186,4 +186,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { assets, extract, extractTarGz, extractZip, main };
+module.exports = { assets, download, extract, extractTarGz, extractZip, main };

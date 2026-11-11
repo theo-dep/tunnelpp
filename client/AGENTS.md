@@ -23,9 +23,7 @@ This file inherits the root `AGENTS.md` rules (see Hierarchy there).
   backoff, request dispatch to worker threads.
 - `local_forwarder.*`: `forward_to_local`: forwards one tunnel request to the local HTTP service.
 - `main.cpp`: CLI entry point, signal handling.
-- `npm/`: the `@theo-dep/tunnelpp` package (`package.json`, `index.js`, `bin/`, `scripts/install.js`,
-  `test/install.test.js`). The install script extracts the release archive in pure Node (no system
-  tar/unzip) and is tested with `npm test` in `client/npm/` (CI job `npm-wrapper`).
+- `npm/`: the `@theo-dep/tunnelpp` package — own instructions in `npm/AGENTS.md`.
 
 ## Tests (Catch2 v3)
 
