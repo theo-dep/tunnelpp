@@ -1,3 +1,10 @@
+## [0.1.0-alpha.7](https://github.com/theo-dep/tunnelpp/compare/v0.1.0-alpha.6...v0.1.0-alpha.7) (2026-11-11)
+
+### Bug Fixes
+
+* **npm:** extract release in pure node ([ce72ce0](https://github.com/theo-dep/tunnelpp/commit/ce72ce0dbaab34c3f23afbb0343a283584c16057))
+* **npm:** pack windows dll with tunnel-client.exe ([ad2a35e](https://github.com/theo-dep/tunnelpp/commit/ad2a35eb9c23de0d4aa4c14f5c832c7cd64c3b10))
+
 ## [0.1.0-alpha.6](https://github.com/theo-dep/tunnelpp/compare/v0.1.0-alpha.5...v0.1.0-alpha.6) (2026-11-09)
 
 ### Bug Fixes
