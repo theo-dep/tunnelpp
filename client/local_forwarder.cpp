@@ -3,6 +3,7 @@
 #include <headers.h>
 
 #include <httplib.h>
+#include <spdlog/spdlog.h>
 
 #include <string>
 
@@ -19,6 +20,11 @@ namespace tunnelpp::client
 
         const auto host{ local.host.contains(':') ? "[" + local.host + "]" : local.host };
         httplib::Client client{ local.scheme + "://" + host + ":" + std::to_string(local.port_or_default()) };
+        if (local.scheme == "https") {
+            // local services usually serve https with a self-signed certificate
+            client.enable_server_certificate_verification(false);
+            client.enable_server_hostname_verification(false);
+        }
         client.set_connection_timeout(connect_timeout_seconds, 0);
         client.set_read_timeout(timeout_seconds, 0);
         client.set_write_timeout(write_timeout_seconds, 0);
@@ -31,11 +37,13 @@ namespace tunnelpp::client
 
         const auto result{ client.send(forward_request) };
         if (!result) {
+            spdlog::warn("forward to {}:{} failed: {}", host, local.port_or_default(), httplib::to_string(result.error()));
             response.status = status_bad_gateway;
             response.headers.emplace("Content-Type", "application/json");
             response.body = R"({"error":"bad_gateway","message":"failed to reach local service"})";
             return response;
         }
+        spdlog::debug("forward {} {} -> {}", request.method, request.path, result->status);
         response.status = result->status;
         response.headers = filter_tunnel_headers(result->headers);
         response.body = result->body;
