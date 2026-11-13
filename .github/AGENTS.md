@@ -102,6 +102,19 @@ Two phases:
     `client/npm/README.md` ("Supported platforms") and `server/Dockerfile` (linux x64/arm64 asset names).
     Any change to one updates the four others.
 
+Binary paths — the `clang` preset uses the **Ninja Multi-Config** generator with
+`binaryDir: build/${presetName}`, so on every platform each executable lands in
+`build/<preset>/<target source dir>/<Config>/<target name>`, with `.exe` appended on Windows:
+
+| Platform | Release binaries (`cmake --build --preset clang-release`) | Test binaries, Debug (`just test`, preset `clang-test`) |
+|---|---|---|
+| Linux, macOS | `build/clang/client/Release/tunnelpp-client`, `build/clang/server/Release/tunnelpp-server` | `build/clang/tests/Debug/e2e_tests`, `build/clang/common/tests/Debug/common_tests`, `build/clang/server/tests/Debug/server_tests`, `build/clang/client/tests/Debug/client_tests` |
+| Windows | `build/clang/client/Release/tunnelpp-client.exe`, `build/clang/server/Release/tunnelpp-server.exe` | same paths as Linux/macOS, with `.exe` appended |
+
+Two exceptions to the `<Config>` segment: `build/clang/vcpkg_installed/<triplet>/bin/*.dll` (Windows
+runtime DLLs) sits at the root of the binary dir, and coverage builds use `build/coverage/...` instead
+of `build/clang/...` (same layout otherwise).
+
 ### CodeQL (`codeql.yml`)
 
 - Triggered on push/PR to `main` and weekly (cron), per GitHub's template
@@ -127,6 +140,7 @@ Pitfalls (each one has broken CI once):
 - Plugin templates receive `{ branch, lastRelease, nextRelease }` — use `${nextRelease.version}`, never `${version}` (the `@semantic-release/git` commit message crashes with `ReferenceError: version is not defined` otherwise)
 - `conventional-changelog-conventionalcommits` must stay on v9 (`^9.3.1`): v10 requires `conventional-changelog-writer@9`, but `@semantic-release/changelog@7` / `release-notes-generator@14` ship writer@8 (handlebars `helper-missing` crash when rendering notes)
 - `--dry-run` skips `prepare`/`publish`, so it does not exercise the plugins' write steps: before changing `release.config.js`, test each plugin step (`exec`, `git`, `changelog`, `npm`) individually in a scratch clone, and run the full `--dry-run` for the version calculation
+- Binary paths: with Ninja Multi-Config every exe is under a `<Config>` segment (see the table in the Release section above). The Windows `Package` step once copied `build/clang/client/tunnelpp-client.exe` without `Release/` and failed with `Cannot find path '...build\clang\client\tunnelpp-client.exe'`
 
 ### GitHub App (bot) authentication
 
