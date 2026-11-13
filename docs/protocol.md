@@ -58,7 +58,9 @@ The client generates a random subdomain when the user does not request one.
 ```
 
 Hop-by-hop and framing headers (`Host`, `Connection`, `Transfer-Encoding`, `Content-Length`, ...) are stripped
-by the server before forwarding. The client must answer with a `response` carrying the same `id` within
+by the server before forwarding. `path` is the raw request target (already percent-encoded by the browser,
+e.g. `/@fs/a+b/c%20d.css`): the client must forward it byte-for-byte, without re-encoding (`+` must stay `+`,
+`%20` must not become `%2520`). The client must answer with a `response` carrying the same `id` within
 `TUNNELPP_REQUEST_TIMEOUT` seconds (default 30).
 
 ### `response` — client → server

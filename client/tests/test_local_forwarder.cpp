@@ -197,6 +197,16 @@ TEST_CASE("forward_to_local connection refused")
     REQUIRE(response.headers.count("Content-Type") == 1);
 }
 
+TEST_CASE("forward_to_local sends the request target bytes unchanged")
+{
+    EchoServer echo;
+    // the tunnel server forwards req.target as-is, already percent-encoded by the browser:
+    // '+' must stay '+', '%20' must not be double-encoded
+    const auto response{ forward_to_local(local_url(echo.port()), make_request("GET", "/@fs/C:/a+b/c%20d.css?x=1+2"), 5) };
+    REQUIRE(response.status == 200);
+    REQUIRE(nlohmann::json::parse(response.body).at("path") == "/@fs/C:/a+b/c%20d.css?x=1+2");
+}
+
 TEST_CASE("forward_to_local https with self-signed certificate")
 {
     EchoTlsServer echo;

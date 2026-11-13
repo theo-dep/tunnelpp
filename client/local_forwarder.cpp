@@ -20,6 +20,9 @@ namespace tunnelpp::client
 
         const auto host{ local.host.contains(':') ? "[" + local.host + "]" : local.host };
         httplib::Client client{ local.scheme + "://" + host + ":" + std::to_string(local.port_or_default()) };
+        // request.path is the raw req.target from the tunnel server (already percent-encoded by
+        // the browser): send it as-is, httplib's default re-encoding would turn '+' into '%2B'
+        client.set_path_encode(false);
         if (local.scheme == "https") {
             // local services usually serve https with a self-signed certificate
             client.enable_server_certificate_verification(false);
