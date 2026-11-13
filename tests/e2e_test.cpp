@@ -27,6 +27,12 @@ namespace
         EchoServer()
         {
             const auto handler{ [](const httplib::Request& req, httplib::Response& res) {
+                constexpr int status_not_found{ 404 };
+                if (req.target.starts_with("/missing")) {
+                    res.status = status_not_found;
+                    res.set_content(R"({"error":"not_found"})", "application/json");
+                    return;
+                }
                 const auto body = nlohmann::json{
                     { "method", req.method },
                     { "path", req.target },
@@ -129,6 +135,39 @@ TEST_CASE("e2e http request through the tunnel")
     const auto wrong_host{ http.Get("/", httplib::Headers{ { "Host", "example.com" } }) };
     REQUIRE(wrong_host);
     REQUIRE(wrong_host->status == 404);
+
+    client.stop();
+    client_thread.join();
+    server.stop();
+}
+
+TEST_CASE("e2e local responses are forwarded unchanged (assets 200, missing 404)")
+{
+    EchoServer echo;
+    auto server{ make_server() };
+    REQUIRE(server.start());
+
+    TunnelClient client{ make_client_config(server.public_port(), echo.port(), "secret", "e2e-app") };
+    std::thread client_thread{ [&] { client.run(); } };
+    REQUIRE(wait_for([&] { return client.is_registered(); }, 5));
+
+    httplib::Client http{ "127.0.0.1", server.public_port() };
+    http.set_read_timeout(10, 0);
+    const httplib::Headers host{ { "Host", "e2e-app.tunnel.test" } };
+
+    const auto index{ http.Get("/", host) };
+    REQUIRE(index);
+    REQUIRE(index->status == 200);
+
+    const auto asset{ http.Get("/main.ts?v=42", host) };
+    REQUIRE(asset);
+    REQUIRE(asset->status == 200);
+    REQUIRE(nlohmann::json::parse(asset->body).at("path") == "/main.ts?v=42");
+
+    const auto missing{ http.Get("/missing/300.css", host) };
+    REQUIRE(missing);
+    REQUIRE(missing->status == 404);
+    REQUIRE(nlohmann::json::parse(missing->body).at("error") == "not_found");
 
     client.stop();
     client_thread.join();
