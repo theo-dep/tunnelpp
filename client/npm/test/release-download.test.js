@@ -4,6 +4,7 @@
 // release asset for the current platform from GitHub and extract it with the install script.
 // Complements the offline unit tests: proves the asset URL built from version.txt + the asset
 // map actually exists, and that the real archives (GNU tar, Compress-Archive zip) extract.
+// Falls back to the newest release shipping the asset when v{version.txt} misses it.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -11,7 +12,7 @@ const fs = require("fs");
 const path = require("path");
 
 const { assets, download, extract } = require("../scripts/install.js");
-const { tmpdir } = require("./helpers");
+const { tmpdir, resolveReleaseVersion } = require("./helpers");
 
 const repoRoot = path.join(__dirname, "..", "..", "..");
 
@@ -19,11 +20,12 @@ test(
   "real release asset downloads and extracts for the current platform",
   { timeout: 180_000 },
   async () => {
-    const version = fs.readFileSync(path.join(repoRoot, "version.txt"), "utf8").trim();
+    const preferred = fs.readFileSync(path.join(repoRoot, "version.txt"), "utf8").trim();
     const key = `${process.platform}-${process.arch}`;
     const asset = assets[key];
     assert.ok(asset, `no asset mapped for ${key}`);
     const repo = process.env.TUNNELPP_REPO || "theo-dep/tunnelpp";
+    const version = await resolveReleaseVersion(repo, asset, preferred);
     const url = `https://github.com/${repo}/releases/download/v${version}/${asset}`;
 
     const dir = tmpdir();

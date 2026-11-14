@@ -209,6 +209,11 @@ All workflows follow the principle of least privilege:
 ## Conventions
 
 - **Never change CI without testing locally.** Equivalent commands are in the `Justfile` at the repo root (`just test`, `just coverage`, `just tidy`, etc.).
+- **npm-wrapper job**: `ci.yml` runs `node --test "client/npm/test/*.test.js"` on 3 OS. Any change to
+  `release.yml` (build matrix, packaging steps, binary paths, asset naming) or to `client/npm/` must be
+  verified with that command from the repo root before finishing — `client/npm/test/release.test.js`
+  pins `release.yml` statically (a wrong packaging path there once shipped a release with no win32
+  asset), and the two network tests (`release-download`, `npm-install`) need internet access.
 - **Preserve CMake presets.** Workflows use the presets defined in `CMakePresets.json` (`clang`, `clang-test`, `clang-lint`). Do not replace them with inline CMake commands.
 - **The vcpkg binary cache is mandatory.** All build workflows use the `setup-vcpkg` action. Do not remove the cache — builds would be much slower.
 - **Matrix `fail-fast: false`.** When adding a matrix job, always set `fail-fast: false` so all OSes run even if one fails.
@@ -224,6 +229,7 @@ All workflows follow the principle of least privilege:
 | CI action | Local command (from repo root) |
 |---|---|
 | CI build-test | `just test` |
+| CI npm-wrapper (JS tests) | `node --test "client/npm/test/*.test.js"` (network needed for `release-download`/`npm-install`) |
 | CI lint | `just tidy <files>` (targeted lint) — full CI lint is `cmake --preset clang-lint && cmake --build build/clang-lint --parallel 1` |
 | Coverage | `just coverage` |
 | Docker build | `docker build --build-arg VERSION=<released version> -f server/Dockerfile .` (the release must already be published) |

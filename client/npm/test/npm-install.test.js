@@ -3,7 +3,8 @@
 // End-to-end test (network required, runs in the CI `npm-wrapper` job): pack the package from
 // this checkout, `npm install` the tarball into a scratch consumer project — which runs the
 // real `install` lifecycle script and downloads the real release asset — then run the installed
-// CLI and use the installed JS API.
+// CLI and use the installed JS API. The packed version is v{version.txt}, or the newest release
+// shipping the asset when that one misses the current platform's (see resolveReleaseVersion).
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -11,7 +12,8 @@ const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
 
-const { tmpdir } = require("./helpers");
+const { assets } = require("../scripts/install.js");
+const { tmpdir, resolveReleaseVersion } = require("./helpers");
 
 const repoRoot = path.join(__dirname, "..", "..", "..");
 const pkgDir = path.join(__dirname, "..");
@@ -35,8 +37,11 @@ function run(cmd, args, options) {
 test(
   "npm install of the packed package installs the release binary and works",
   { timeout: 300_000 },
-  () => {
-    const version = fs.readFileSync(path.join(repoRoot, "version.txt"), "utf8").trim();
+  async () => {
+    const preferred = fs.readFileSync(path.join(repoRoot, "version.txt"), "utf8").trim();
+    const repo = process.env.TUNNELPP_REPO || "theo-dep/tunnelpp";
+    const key = `${process.platform}-${process.arch}`;
+    const version = await resolveReleaseVersion(repo, assets[key], preferred);
     const dir = tmpdir();
     try {
       // pack a copy of client/npm with the release version set (as publish-npm does)
