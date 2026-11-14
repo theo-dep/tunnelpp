@@ -38,9 +38,10 @@ test("release workflow still packages assets with the expected naming scheme", (
     "utf8",
   );
   // Windows: dist/<exe-base>-$env:TARGET.zip staging the exe + vcpkg runtime DLLs,
-  // for BOTH the client and the server; elsewhere: dist/tunnelpp-client-$TARGET.tar.gz
-  assert.match(releaseYml, /client\/tunnelpp-client\.exe/);
-  assert.match(releaseYml, /server\/tunnelpp-server\.exe/);
+  // for BOTH the client and the server; elsewhere: dist/tunnelpp-client-$TARGET.tar.gz.
+  // The clang preset is Ninja Multi-Config: the exes are built under build/clang/<target>/Release/.
+  assert.match(releaseYml, /client\/Release\/tunnelpp-client\.exe/);
+  assert.match(releaseYml, /server\/Release\/tunnelpp-server\.exe/);
   assert.match(releaseYml, /-\$env:TARGET\.zip/);
   assert.match(releaseYml, /vcpkg_installed\/\*\/bin\/\*\.dll/);
   assert.match(releaseYml, /tunnelpp-client-\$TARGET\.tar\.gz/);

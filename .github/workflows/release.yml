@@ -260,7 +260,7 @@ jobs:
           TARGET: ${{ matrix.target }}
         run: |
           $ErrorActionPreference = 'Stop'
-          foreach ($exe in 'client/tunnelpp-client.exe', 'server/tunnelpp-server.exe') {
+          foreach ($exe in 'client/Release/tunnelpp-client.exe', 'server/Release/tunnelpp-server.exe') {
             $base = (Split-Path $exe -Leaf) -replace '\.exe$', ''
             New-Item -ItemType Directory -Force -Path dist/staging | Out-Null
             Copy-Item "build/clang/$exe" -Destination dist/staging/

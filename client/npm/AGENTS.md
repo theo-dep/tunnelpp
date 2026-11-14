@@ -22,9 +22,10 @@
     including a simulated win32 run
   - `release.test.js`: asset map ↔ `release.yml` build matrix, os/cpu ↔ assets
   - `release-download.test.js`: integration, needs network — downloads and extracts the real
-    release asset for the current platform (`v{version.txt}`), checks the binary magic bytes
+    release asset for the current platform (`v{version.txt}`, or the newest release shipping
+    the asset when that one predates a `release.yml` packaging fix), checks the binary magic bytes
   - `npm-install.test.js`: end-to-end, needs network — `npm pack` a copy of the package (with
-    `version.txt` as version, `vendor/` excluded), `npm install` the tarball into a scratch
+    the resolved release version as version, `vendor/` excluded), `npm install` the tarball into a scratch
     consumer project, then run the installed CLI (`--help`) and JS API. Runs the real `install`
     lifecycle script, i.e. the exact flow of issue #27. On win32 the `--help` run is conditional:
     the exe only executes if the downloaded asset ships the vcpkg runtime DLLs (assets published
@@ -35,6 +36,11 @@
 
 ## Rules
 
+- Run the tests before finishing any change under `client/npm/` — or any change to
+  `.github/workflows/release.yml` that can affect them (build matrix, packaging, asset naming;
+  see `.github/AGENTS.md`): from the repo root `node --test "client/npm/test/*.test.js"` (the
+  `release-download`/`npm-install` tests need network access). The CI `npm-wrapper` job runs
+  the same command on ubuntu/windows/macos: a change that was only checked on one OS is not done.
 - Never add a dependency (`dependencies`/`devDependencies`) without asking.
 - Edit `package.json` only through npm (`npm pkg set ...`), never by hand.
 - `engines.node >= 16` applies to the published scripts (`install.js`, `index.js`, `bin/`);

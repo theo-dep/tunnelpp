@@ -13,7 +13,7 @@ tunnelpp-client --server <ws:// or wss:// URL> --token <token> [options]
 | ------ | ------- | ----------- |
 | `--server` | **required** | tunnel server WebSocket URL, e.g. `wss://tunnel.example.com` |
 | `--token` | **required** | authentication token shared with the server |
-| `--local` | `http://127.0.0.1:8080` | local service URL to expose (`http://` or `https://`) |
+| `--local` | `http://127.0.0.1:8080` | local service URL to expose (`http://` or `https://`; with `https://`, self-signed certificates are accepted) |
 | `--subdomain` | random | requested subdomain (`<subdomain>.<domain>`) |
 | `--max-reconnect-delay` | `30` | maximum delay between reconnection attempts, in seconds |
 | `--verbose` | off | debug logging |
