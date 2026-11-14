@@ -1,3 +1,14 @@
+## [0.1.0-alpha.8](https://github.com/theo-dep/tunnelpp/compare/v0.1.0-alpha.7...v0.1.0-alpha.8) (2026-11-14)
+
+### Features
+
+* **client:** accept self-signed certificates ([81b7d69](https://github.com/theo-dep/tunnelpp/commit/81b7d696fe4142901ea7f04e9aeab9d6990094c7))
+
+### Bug Fixes
+
+* **client:** forward requests without encoding (already encoded by server or browser) ([a6e37d3](https://github.com/theo-dep/tunnelpp/commit/a6e37d3f14402b433d1468b5717661d3b989f062))
+* **npm:** correct windows build path to pack release ([67cfc1c](https://github.com/theo-dep/tunnelpp/commit/67cfc1cc04b6c49fb94053c81943dafb6d6a7b82))
+
 ## [0.1.0-alpha.7](https://github.com/theo-dep/tunnelpp/compare/v0.1.0-alpha.6...v0.1.0-alpha.7) (2026-11-11)
 
 ### Bug Fixes
