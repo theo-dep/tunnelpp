@@ -2,8 +2,9 @@
 
 [![Release](https://img.shields.io/github/actions/workflow/status/theo-dep/tunnelpp/release.yml?label=Release)](https://github.com/theo-dep/tunnelpp/actions/workflows/release.yml)
 [![Release](https://img.shields.io/github/v/release/theo-dep/tunnelpp?sort=semver&include_prereleases)](https://github.com/theo-dep/tunnelpp/releases/latest)
-[![npm](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Ftheo-dep%2Ftunnelpp%2Fmain%2Fclient%2Fnpm%2Fpackage.json&query=%24.version&prefix=v&label=npm&color=blue)](https://github.com/theo-dep/tunnelpp/pkgs/npm/tunnelpp)
-[![Docker](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Ftheo-dep%2Ftunnelpp%2Fmain%2Fvcpkg.json&query=%24.version-string&label=docker&color=2496ED)](https://github.com/theo-dep/tunnelpp/pkgs/container/tunnelpp)
+[![npm](https://img.shields.io/badge/dynamic/yaml?url=https%3A%2F%2Fraw.githubusercontent.com%2Ftheo-dep%2Ftunnelpp%2Fmain%2Fversion.txt&query=%24&prefix=v&label=npm&color=blue)](https://github.com/theo-dep/tunnelpp/pkgs/npm/tunnelpp)
+[![npmjs](https://img.shields.io/npm/v/@theo-dep%2Ftunnelpp?label=npmjs&color=CB383F)](https://www.npmjs.com/package/@theo-dep/tunnelpp)
+[![Docker](https://img.shields.io/badge/dynamic/yaml?url=https%3A%2F%2Fraw.githubusercontent.com%2Ftheo-dep%2Ftunnelpp%2Fmain%2Fversion.txt&query=%24&prefix=v&label=docker&color=2496ED)](https://github.com/theo-dep/tunnelpp/pkgs/container/tunnelpp)
 [![License: MIT](https://img.shields.io/github/license/theo-dep/tunnelpp)](LICENSE)
 
 tunnelpp exposes a local HTTP service on a public subdomain through a tunnel server. The client opens an
