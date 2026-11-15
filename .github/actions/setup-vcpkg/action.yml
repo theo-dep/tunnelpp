@@ -32,9 +32,10 @@ runs:
       shell: cmd
       run: .\.vcpkg\bootstrap-vcpkg.bat
 
-    # nuget.exe is executed through mono on Linux/macOS
-    # mono is no longer in the default Ubuntu repos on recent runners (apt exit 100),
-    # so the official Mono apt repository must be added first
+    # nuget.exe is executed through mono on Linux/macOS.
+    # The mono-project repo provides ca-certificates-mono (cert-sync) on all Ubuntu
+    # releases, and mono-complete on ≤24.04; on 26.04 mono comes from universe instead
+    # (see the Install mono step).
     - name: Add Mono official apt repository (Linux)
       if: runner.os == 'Linux'
       shell: bash
@@ -52,17 +53,30 @@ runs:
         sudo apt-get update
 
     # ca-certificates-mono provides cert-sync and keeps the Mono CA store in sync with
-    # the system bundle. Without it, TLS to nuget.pkg.github.com fails with
-    # CERTIFICATE_VERIFY_FAILED and the vcpkg binary cache falls back to source builds.
-    # On recent Ubuntu runners (26.04+) the focal Mono packages have unmet dependencies
-    # (libssl1.1 & co): mono cannot be installed at all, so the NuGet binary cache is
-    # disabled via GITHUB_ENV and vcpkg builds dependencies from source instead.
+    # the system bundle (it exists only in the mono-project repo). Without it, TLS to
+    # nuget.pkg.github.com fails with CERTIFICATE_VERIFY_FAILED and the vcpkg binary cache
+    # falls back to source builds.
+    # mono-complete is the historical install: it resolves on noble (24.04) but was dropped
+    # from resolute (26.04) universe, and the mono-project focal build (6.12.0.200-
+    # 0xamarin2+ubuntu2004b1) has an unsatisfiable dependency chain there. resolute universe
+    # ships its own mono-devel (6.14.1), which is enough to run nuget.exe — verified in a
+    # plain ubuntu:26.04 container, same as container/ci.containerfile in simple-video-cms.
     - name: Install mono (Linux)
       if: runner.os == 'Linux'
       shell: bash
       run: |
-        if sudo apt-get install -y mono-complete ca-certificates-mono; then
+        if sudo apt-get install -y mono-complete ca-certificates-mono \
+           || sudo apt-get install -y mono-devel ca-certificates-mono; then
           echo "VCPKG_BINARY_SOURCES=clear;nuget,$VCPKG_NUGET_FEED_URL,readwrite" >> "$GITHUB_ENV"
+          # Linux ARM runners ship a /usr/bin/nuget shell wrapper (Debian packaging).
+          # vcpkg prefers a system nuget over its own downloaded nuget.exe and probes it
+          # with `mono /usr/bin/nuget` ("not a valid CIL image"): `vcpkg fetch nuget`
+          # then exits 1, and binary-cache operations at configure time fail as
+          # "Packing NuGet failed" (vcpkg-tool#2160, vcpkg#45975). Forcing the downloaded
+          # binaries makes vcpkg ignore the system wrapper and fetch its nuget.exe from
+          # vcpkg-tools.json (arch-independent, run under mono) — no-op where no system
+          # nuget exists, e.g. x86_64 runners.
+          echo "VCPKG_FORCE_DOWNLOADED_BINARIES=1" >> "$GITHUB_ENV"
         else
           echo "::warning::mono is not installable on this runner ($( . /etc/os-release && echo "$PRETTY_NAME")): the vcpkg NuGet binary cache is disabled for this job"
           echo "VCPKG_BINARY_SOURCES=clear" >> "$GITHUB_ENV"

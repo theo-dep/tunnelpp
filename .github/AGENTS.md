@@ -146,7 +146,7 @@ of `build/clang/...` (same layout otherwise).
   - `c-cpp` with `build-mode: manual`: autobuild cannot work (the CMake configure needs vcpkg), so the job installs Ninja + Clang, sets up vcpkg (mandatory binary cache) and builds with the `clang` preset (`cmake --preset clang`, `cmake --build --preset clang-debug`) after `codeql-action/init` so the compilation is intercepted
   - `javascript-typescript` with `build-mode: none`: no build step (`client/npm/` wrapper, `release.config.js`)
 
-The C/C++ SARIF is filtered before upload: the `analyze` step writes it locally (`output` + `upload: false`), a Python step drops every result whose location is under `build/`, `.vcpkg/` or `vcpkg_installed/` (dependency code that ends up under the CodeQL trace: port sources built from source at configure time when the NuGet cache misses — the Ubuntu 26.04 runners cannot install mono, so the cache is off — and installed headers included by the project build), and `upload-sarif` publishes what is left. Filtering the SARIF is the only reliable mechanism: the `paths-ignore` config-file filter is not applied to compiled languages built manually, only to `build-mode: none`. Note the `upload-sarif` input is `sarif_file` (underscore) — a dash silently falls back to the default `../results` and fails the upload.
+The C/C++ SARIF is filtered before upload: the `analyze` step writes it locally (`output` + `upload: false`), a Python step drops every result whose location is under `build/`, `.vcpkg/` or `vcpkg_installed/` (dependency code that ends up under the CodeQL trace: port sources built from source at configure time when the NuGet cache misses — binary-cache misses on new ABI versions; the mono fallback keeps the cache enabled on Ubuntu 26.04 — and installed headers included by the project build), and `upload-sarif` publishes what is left. Filtering the SARIF is the only reliable mechanism: the `paths-ignore` config-file filter is not applied to compiled languages built manually, only to `build-mode: none`. Note the `upload-sarif` input is `sarif_file` (underscore) — a dash silently falls back to the default `../results` and fails the upload.
 
 ## Semantic release configuration
 
@@ -222,10 +222,11 @@ The root `npm` ecosystem ignores semver-major updates of `conventional-changelog
 
 - Checks out `microsoft/vcpkg` into `.vcpkg/`, pinned to the `builtin-baseline` commit of `vcpkg.json` (depth-1 fetch)
 - Bootstraps vcpkg (`.sh` on Linux/macOS, `.bat` on Windows)
-- Installs `mono` on Linux/macOS (needed to run `nuget.exe`)
+- Installs mono on Linux/macOS (needed to run `nuget.exe`). On Linux: `mono-complete` (resolves on ≤24.04), falling back to `mono-devel` (Ubuntu 26.04 universe ships it; `mono-complete` was dropped there and the mono-project focal build has an unsatisfiable dependency chain — see the action comments)
+- On Linux, mono installed also sets `VCPKG_FORCE_DOWNLOADED_BINARIES=1` in `GITHUB_ENV`: ARM runners ship a `/usr/bin/nuget` shell wrapper that vcpkg prefers and probes with mono ("not a valid CIL image"), breaking both `vcpkg fetch nuget` and binary-cache operations ("Packing NuGet failed" — vcpkg-tool#2160, vcpkg#45975); the env var makes vcpkg ignore system binaries and use its downloaded nuget.exe (no-op on x86_64, where no system nuget exists)
 - Configures the vcpkg binary cache on a NuGet feed hosted on GitHub Packages
 - Uses `secrets.GITHUB_TOKEN` for authentication
-- Environment variables expected by the action: `VCPKG_ROOT`, `VCPKG_EXE`, `VCPKG_NUGET_FEED_URL` (set at the `env:` level in each workflow). `VCPKG_BINARY_SOURCES` is set by the action itself via `GITHUB_ENV` (NuGet cache where mono is installable, `clear` fallback on runners where the focal Mono packages have unmet dependencies, e.g. Ubuntu 26.04 — dependencies then build from source)
+- Environment variables expected by the action: `VCPKG_ROOT`, `VCPKG_EXE`, `VCPKG_NUGET_FEED_URL` (set at the `env:` level in each workflow). `VCPKG_BINARY_SOURCES` is set by the action itself via `GITHUB_ENV` (NuGet cache as soon as mono is installable; `clear` fallback only if neither `mono-complete` nor `mono-devel` resolves, in which case dependencies build from source)
 
 ## Permissions
 
