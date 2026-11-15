@@ -102,9 +102,18 @@ Two phases:
       `VCPKG_CXX_FLAGS`. The flags live in the triplet (not in env vars) so they are part of the
       vcpkg ABI hash: stale v3 binaries are never reused from the NuGet cache, and the first build
       after adding the triplet recompiles all ports from source once
-  - On Linux, the job pins the baseline `amd64` apt variant before installing the toolchain: the
-    ubuntu-26.04 runner enables the `amd64v3` variant, whose `libc6-dev` marks every linked binary
-    x86-64-v3 via its `crt1.o` note (the linker merges GNU property notes)
+  - On Linux, the job pins the baseline `amd64` apt variant on every apt call of the
+    x86_64 runners (`-o APT::Architecture-Variants="amd64"`): the ubuntu-26.04 runner
+    enables the `amd64v3` variant, whose `libc6-dev` marks every linked binary x86-64-v3
+    via its `crt1.o` note (the linker merges GNU property notes). The variant resolution
+    is flaky across runners — with glibc 2.43-2ubuntu2.7 in resolute-updates, two runs of
+    the same commit on the same image resolved amd64v3 (failed the baseline check) and
+    then amd64 (passed) under an identical conf-file pin. The step therefore verifies
+    `crt1.o` (`readelf -nW`) right after install, and if the v3 variant slipped in, drops
+    its package indexes (`/var/lib/apt/lists/*amd64v3*`), reinstalls and re-verifies —
+    only then fails; the late `Check x86-64 baseline` step stays as the safety net. On
+    arm64, apt rejects the option ("Invalid value for APT::Architecture-Variants: amd64")
+    and there is no v3 problem: the pin and the crt check are skipped there
   - A `Check x86-64 baseline (linux x64)` step fails the linux x64 builds if a compile command drops
     `-march=x86-64`, a project object contains ymm/zmm code, or a linked binary's GNU property note
     (`readelf -nW`) requires more than the baseline — glibc refuses to start such binaries on CPUs

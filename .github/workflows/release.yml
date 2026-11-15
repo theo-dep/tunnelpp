@@ -217,11 +217,43 @@ jobs:
       - name: Install Ninja and Clang (Linux)
         if: runner.os == 'Linux'
         run: |
-          # The amd64v3 libc6-dev on ubuntu-26.04 runners marks every linked binary x86-64-v3 via
-          # its crt1.o note: pin the baseline amd64 variant and reinstall the toolchain from it.
-          echo 'APT::Architecture-Variants "amd64";' | sudo tee /etc/apt/apt.conf.d/99-amd64-baseline
-          sudo apt-get update
-          sudo apt-get install -y --allow-downgrades --reinstall ninja-build clang zip libc6-dev
+          # The amd64v3 libc6-dev on x86_64 ubuntu-26.04 runners marks every linked binary
+          # x86-64-v3 via its crt1.o note (the linker merges GNU property notes): every apt
+          # call must pin the baseline amd64 variant. -o on the command line: the resolution
+          # is flaky across runners — with glibc 2.43-2ubuntu2.7 in resolute-updates, two
+          # runs of the same commit on the same image fetched amd64v3 (us-east-2.ec2 mirror,
+          # failed the baseline check) and then amd64 (azure mirror, passed) under an
+          # identical conf-file pin. Variant resolution must therefore be verified, not
+          # assumed. On arm64 the option is rejected by apt ("Invalid value for
+          # APT::Architecture-Variants: amd64") and there is no v3 variant problem: the pin
+          # and the crt1.o check only apply on x86_64.
+          X86_ONLY="$(uname -m)"
+          if [ "$X86_ONLY" = "x86_64" ]; then
+            variant=(-o 'APT::Architecture-Variants="amd64"')
+          else
+            variant=()
+          fi
+          sudo apt-get "${variant[@]}" update
+          sudo apt-get "${variant[@]}" install -y --allow-downgrades --reinstall ninja-build clang zip libc6-dev
+          if [ "$X86_ONLY" != "x86_64" ]; then exit 0; fi
+          crt=/usr/lib/x86_64-linux-gnu/crt1.o
+          crt_notes() { readelf -nW "$crt" | grep 'x86 ISA needed' || true; }
+          notes="$(crt_notes)"
+          echo "crt1.o: ${notes:-baseline}"
+          if echo "$notes" | grep -q 'x86-64-v[2-9]'; then
+            # The v3 variant slipped in despite the pin: drop its package indexes so apt
+            # can only resolve the baseline variant, then reinstall and re-verify.
+            echo "the amd64v3 variant was installed despite the pin: dropping its indexes and forcing the baseline" >&2
+            sudo rm -f /var/lib/apt/lists/*amd64v3*
+            sudo apt-get "${variant[@]}" update
+            sudo apt-get "${variant[@]}" install -y --allow-downgrades --reinstall libc6-dev
+            notes="$(crt_notes)"
+            echo "crt1.o: ${notes:-baseline}"
+            if echo "$notes" | grep -q 'x86-64-v[2-9]'; then
+              echo "::error::libc6-dev:amd64v3 cannot be swapped for the baseline variant ($notes): release binaries would be marked above the x86-64 baseline" >&2
+              exit 1
+            fi
+          fi
 
       - name: Set up Clang (Windows)
         if: runner.os == 'Windows'
