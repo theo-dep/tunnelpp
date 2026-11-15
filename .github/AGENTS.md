@@ -122,6 +122,8 @@ of `build/clang/...` (same layout otherwise).
   - `c-cpp` with `build-mode: manual`: autobuild cannot work (the CMake configure needs vcpkg), so the job installs Ninja + Clang, sets up vcpkg (mandatory binary cache) and builds with the `clang` preset (`cmake --preset clang`, `cmake --build --preset clang-debug`) after `codeql-action/init` so the compilation is intercepted
   - `javascript-typescript` with `build-mode: none`: no build step (`client/npm/` wrapper, `release.config.js`)
 
+The C/C++ SARIF is filtered before upload: the `analyze` step writes it locally (`output` + `upload: false`), a Python step drops every result whose location is under `build/`, `.vcpkg/` or `vcpkg_installed/` (dependency code that ends up under the CodeQL trace: port sources built from source at configure time when the NuGet cache misses — the Ubuntu 26.04 runners cannot install mono, so the cache is off — and installed headers included by the project build), and `upload-sarif` publishes what is left. Filtering the SARIF is the only reliable mechanism: the `paths-ignore` config-file filter is not applied to compiled languages built manually, only to `build-mode: none`. Note the `upload-sarif` input is `sarif_file` (underscore) — a dash silently falls back to the default `../results` and fails the upload.
+
 ## Semantic release configuration
 
 `release.config.js` (semantic-release, Node.js; plugins installed from the root `package.json` via `npm ci`):
