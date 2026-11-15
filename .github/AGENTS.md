@@ -201,6 +201,10 @@ vcpkg uses `fix(deps)` because C++ dependency updates often include security fix
 - `fix(deps): bump openssl from 3.3.0 to 3.3.1`
 - `chore(deps): bump actions/checkout from 4 to 5`
 
+The root `npm` ecosystem ignores semver-major updates of `conventional-changelog-conventionalcommits`: v10 needs
+`conventional-changelog-writer@9` while semantic-release 25 ships writer@8 (see the pitfall above). Remove the
+`ignore` rule once semantic-release bundles writer@9+.
+
 ## Composite action: `setup-vcpkg`
 
 `.github/actions/setup-vcpkg/action.yml` — used by `ci.yml`, `coverage.yml` and `release.yml`.
