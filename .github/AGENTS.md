@@ -63,7 +63,9 @@ Two phases:
     `.github/actions/publish-npm`: setup Node 22, optional npm upgrade, registry config,
     `client/npm/package.json` carries no version in the repo (the action sets it with
     `npm version --no-git-tag-version` — `client/npm/scripts/install.js` reads it to build
-    the release asset URL), and `npm publish ./client/npm --access public`
+    the release asset URL), and `npm publish ./client/npm --access public --tag <tag>`
+    (dist-tag `alpha` for prereleases, `latest` for stable — npm >= 11 requires an
+    explicit tag for prereleases, and prereleases must not hijack `latest`)
   - **publish-npm** publishes `@theo-dep/tunnelpp` to the GitHub Packages npm registry
     (`NODE_AUTH_TOKEN` = `GITHUB_TOKEN`, job permission `packages: write`)
   - **publish-npmjs** publishes to registry.npmjs.org via trusted publishing (OIDC): job
