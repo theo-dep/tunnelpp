@@ -1,3 +1,9 @@
+## [0.1.0-alpha.9](https://github.com/theo-dep/tunnelpp/compare/v0.1.0-alpha.8...v0.1.0-alpha.9) (2026-11-15)
+
+### Features
+
+* **npm:** publish in npmjs registry as @theo-dep/tunnelpp ([82d817b](https://github.com/theo-dep/tunnelpp/commit/82d817be9a15f6fc3de9b4ce783a099f7fe51566))
+
 ## [0.1.0-alpha.8](https://github.com/theo-dep/tunnelpp/compare/v0.1.0-alpha.7...v0.1.0-alpha.8) (2026-11-14)
 
 ### Features
