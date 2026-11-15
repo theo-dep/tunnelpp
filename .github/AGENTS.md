@@ -10,7 +10,7 @@ workflows, composite actions, Dependabot configuration.
 | CI | `workflows/ci.yml` | push to `main`, PR | Multi-OS build + tests, clang-tidy lint |
 | Coverage | `workflows/coverage.yml` | push to `main`, manual | LLVM coverage report (artifact) |
 | Docs | `workflows/docs.yml` | push to `main` (path-filtered), manual | Build MkDocs and deploy GitHub Pages |
-| Release | `workflows/release.yml` | push to `main` | Semantic-release (conventional commits): binaries, npm package, Docker image |
+| Release | `workflows/release.yml` | push to `main` | Semantic-release (conventional commits): binaries, npm package (GitHub Packages + npmjs), Docker image |
 | CodeQL | `workflows/codeql.yml` | push/PR to `main`, weekly | Code scanning (C++, JavaScript/TypeScript) |
 
 ## Workflows in detail
@@ -56,10 +56,23 @@ Two phases:
   - Outputs `released` (true/false) and `version` for downstream jobs
   - Version rules: `feat` → minor bump (0.x.y → 0.x+1.0), `fix`/`perf` → patch bump (0.x.y → 0.x.y+1). `chore`, `docs`, `ci`, etc. do not trigger a release.
 
-- **publish-npm** — only runs when `released == 'true'`
-  - Checks out the release tag `v{version}`
-  - `client/npm/package.json` carries no version in the repo: the job sets it with `npm version --no-git-tag-version` before publishing (`client/npm/scripts/install.js` reads it to build the release asset URL)
-  - Publishes `@theo-dep/tunnelpp` to GitHub Packages npm registry
+- **publish-npm / publish-npmjs** — only run when `released == 'true'`, after the `build`
+  matrix (the npm wrapper's `install` script downloads the release assets at install time, so
+  publishing must wait for them)
+  - Check out the release tag `v{version}`, then delegate to the local composite action
+    `.github/actions/publish-npm`: setup Node 22, optional npm upgrade, registry config,
+    `client/npm/package.json` carries no version in the repo (the action sets it with
+    `npm version --no-git-tag-version` — `client/npm/scripts/install.js` reads it to build
+    the release asset URL), and `npm publish ./client/npm --access public`
+  - **publish-npm** publishes `@theo-dep/tunnelpp` to the GitHub Packages npm registry
+    (`NODE_AUTH_TOKEN` = `GITHUB_TOKEN`, job permission `packages: write`)
+  - **publish-npmjs** publishes to registry.npmjs.org via trusted publishing (OIDC): job
+    permission `id-token: write`, npm upgraded to 11+ (OIDC requires npm >= 11.5.1), no npm
+    token in secrets. Prerequisite (npm requires the package to exist before a Trusted
+    Publisher can be configured): one-time manual `npm login` + `npm publish --access public`
+    of the first version from a dev machine, then declare the Trusted Publisher on npmjs.com
+    (repository `theo-dep/tunnelpp`, workflow file `release.yml` — npm authorizes the workflow
+    that triggers the run). Provenance is attested automatically.
 
 - **publish-docker** — only runs when `released == 'true'`, after the `build` matrix
   - Checks out the release tag `v{version}`
@@ -205,7 +218,7 @@ All workflows follow the principle of least privilege:
 
 - `ci.yml`, `coverage.yml`: `contents: read` + `packages: write` (for the vcpkg binary cache on GitHub Packages)
 - `codeql.yml`: `contents: read` + `packages: write` (CodeQL query packs + vcpkg binary cache) + `security-events: write` (SARIF upload to code scanning)
-- `release.yml`: `contents: write` (semantic-release pushes commits/tags, creates releases) + `packages: write` (vcpkg binary cache, npm registry, GHCR push)
+- `release.yml`: `contents: write` (semantic-release pushes commits/tags, creates releases) + `packages: write` (vcpkg binary cache, npm registry, GHCR push); job-level overrides: the npm publish jobs drop `contents: write` (`contents: read`), `publish-npm` keeps `packages: write`, `publish-npmjs` gets `id-token: write` (npm trusted publishing) instead
 - `docs.yml`: `contents: read` + `pages: write` + `id-token: write` (Pages deployment)
 
 ## Conventions
