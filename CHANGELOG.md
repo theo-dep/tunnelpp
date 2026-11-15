@@ -1,3 +1,9 @@
+## [0.1.0-alpha.10](https://github.com/theo-dep/tunnelpp/compare/v0.1.0-alpha.9...v0.1.0-alpha.10) (2026-11-15)
+
+### Bug Fixes
+
+* **npm:** publish npm package with --tag ([8d5f1b3](https://github.com/theo-dep/tunnelpp/commit/8d5f1b3d7ff7c531312348ba8207a3306ea7cf52))
+
 ## [0.1.0-alpha.9](https://github.com/theo-dep/tunnelpp/compare/v0.1.0-alpha.8...v0.1.0-alpha.9) (2026-11-15)
 
 ### Features
