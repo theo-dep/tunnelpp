@@ -66,7 +66,57 @@ jobs:
         run: cmake --build --preset clang-debug
 
       - name: Perform CodeQL Analysis
+        id: analyze
         uses: github/codeql-action/analyze@v4
         with:
+          category: "/language:${{ matrix.language }}"
+          # SARIF is uploaded by the step below after filtering out dependency
+          # alerts: paths-ignore is not applied to compiled languages built
+          # manually, and the traced CMake build extracts vcpkg code
+          output: sarif-results
+          upload: false
+
+      - name: Filter dependency alerts from SARIF
+        if: matrix.language == 'c-cpp'
+        run: |
+          python3 - <<'EOF'
+          import glob
+          import json
+
+          # Project code lives in common/, server/, client/ and tests/ only.
+          # build/clang/vcpkg_installed/ headers are extracted via #include of the
+          # project build, and .vcpkg/buildtrees/ port sources are extracted when
+          # the binary cache misses (Ubuntu 26.04: mono unavailable, cache off).
+          DEPENDENCY_SEGMENTS = {"build", ".vcpkg", "vcpkg_installed"}
+
+          for path in glob.glob("sarif-results/*.sarif"):
+              with open(path) as f:
+                  sarif = json.load(f)
+              dropped = 0
+              for run in sarif["runs"]:
+                  kept = []
+                  for result in run.get("results", []):
+                      uris = [
+                          loc.get("physicalLocation", {})
+                          .get("artifactLocation", {})
+                          .get("uri", "")
+                          for loc in result.get("locations", [])
+                      ]
+                      if any(DEPENDENCY_SEGMENTS & set(u.split("/")) for u in uris):
+                          dropped += 1
+                      else:
+                          kept.append(result)
+                  run["results"] = kept
+              with open(path, "w") as f:
+                  json.dump(sarif, f)
+              print(f"{path}: {dropped} dependency alert(s) removed")
+          EOF
+
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          # underscore: upload-sarif names its input sarif_file, not sarif-file
+          # (a dash makes it fall back to the default ../results and fail)
+          sarif_file: sarif-results
           category: "/language:${{ matrix.language }}"
 
