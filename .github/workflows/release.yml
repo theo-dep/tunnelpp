@@ -72,36 +72,51 @@ jobs:
             echo "released=false" >> "$GITHUB_OUTPUT"
           fi
 
+  # Both npm jobs run after the `build` matrix: client/npm's install script downloads the
+  # release assets at install time, so the package must not be published before they exist.
   publish-npm:
     name: publish-npm
-    needs: semantic-release
+    needs: [semantic-release, build]
     if: needs.semantic-release.outputs.released == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # GitHub Packages npm registry
     steps:
       - uses: actions/checkout@v7
         with:
           ref: v${{ needs.semantic-release.outputs.version }}
 
-      # setup-node writes .npmrc with //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-          registry-url: "https://npm.pkg.github.com/"
-
-      # client/npm/package.json has no version in the repo (single source of truth: version.txt,
-      # bumped by semantic-release in the release commit). Set it here:
-      # client/npm/scripts/install.js reads it to build the release asset URL (v{version}).
-      - name: Set client package version
-        env:
-          VERSION: ${{ needs.semantic-release.outputs.version }}
-        run: npm version --no-git-tag-version "$VERSION" --prefix client/npm
-
-      # The ./ prefix is required: without it npm treats "client/npm" as a GitHub
-      # user/repo shorthand (git ls-remote ssh://git@github.com/client/npm.git, exit 128)
+      # GitHub Packages is authenticated with the job's GITHUB_TOKEN (NODE_AUTH_TOKEN)
       - name: Publish @theo-dep/tunnelpp to GitHub Packages
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm publish ./client/npm --access public
+        uses: ./.github/actions/publish-npm
+        with:
+          version: ${{ needs.semantic-release.outputs.version }}
+          registry: github
+          auth-token: ${{ secrets.GITHUB_TOKEN }}
+
+  # npmjs uses trusted publishing: no npm token in secrets, npm >= 11.5.1 exchanges the
+  # job's OIDC token for short-lived registry credentials; provenance is automatic.
+  # Requires a Trusted Publisher configured on npmjs.com (repository + workflow file
+  # release.yml) — and the package must exist there first (manual one-time publish).
+  publish-npmjs:
+    name: publish-npmjs
+    needs: [semantic-release, build]
+    if: needs.semantic-release.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # OIDC for npm trusted publishing + provenance
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: v${{ needs.semantic-release.outputs.version }}
+
+      - name: Publish @theo-dep/tunnelpp to npmjs
+        uses: ./.github/actions/publish-npm
+        with:
+          version: ${{ needs.semantic-release.outputs.version }}
+          registry: npmjs
 
   # Tags checked out at v{version} (not the triggering push): GITHUB_REF is still refs/heads/main,
   # so metadata-action's type=semver cannot match. Tags are computed from the release version instead.

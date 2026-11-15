@@ -1,0 +1,57 @@
+name: 'Publish npm package'
+description: >-
+  Publishes client/npm (@theo-dep/tunnelpp) to one npm registry: GitHub Packages
+  (NODE_AUTH_TOKEN) or npmjs (trusted publishing via OIDC, npm provenance).
+
+inputs:
+  version:
+    description: 'Released version (no leading v).'
+    required: true
+  registry:
+    description: '"github" (GitHub Packages) or "npmjs" (trusted publishing).'
+    required: true
+  auth-token:
+    description: 'NODE_AUTH_TOKEN, only used for the "github" registry. Empty for "npmjs" (OIDC).'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v7
+      with:
+        node-version: '22'
+
+    # npm OIDC trusted publishing requires npm CLI >= 11.5.1; Node 22 bundles npm 10.x
+    - name: Upgrade npm (npmjs trusted publishing)
+      if: inputs.registry == 'npmjs'
+      shell: bash
+      run: npm install --global npm@11
+
+    # setup-node writes .npmrc with //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}.
+    # Not done for npmjs: no registry-url means the default registry (registry.npmjs.org),
+    # and npm >= 11.5.1 authenticates via the job's OIDC token (id-token: write).
+    - name: Point npm at GitHub Packages
+      if: inputs.registry == 'github'
+      uses: actions/setup-node@v7
+      with:
+        node-version: '22'
+        registry-url: 'https://npm.pkg.github.com/'
+
+    # client/npm/package.json has no version in the repo (single source of truth: version.txt,
+    # bumped by semantic-release in the release commit). Set it here:
+    # client/npm/scripts/install.js reads it to build the release asset URL (v{version}).
+    - name: Set client package version
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+      run: npm version --no-git-tag-version "$VERSION" --prefix client/npm
+
+    # The ./ prefix is required: without it npm treats "client/npm" as a GitHub
+    # user/repo shorthand (git ls-remote ssh://git@github.com/client/npm.git, exit 128)
+    - name: Publish @theo-dep/tunnelpp
+      shell: bash
+      env:
+        NODE_AUTH_TOKEN: ${{ inputs.auth-token }}
+      run: npm publish ./client/npm --access public
